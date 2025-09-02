@@ -12,12 +12,15 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/Colors';
 import { useColorScheme } from '../hooks/useColorScheme';
+import { useFlights } from '../contexts/FlightsContext';
 import { router } from 'expo-router';
 
 export default function BoardingPassScreen() {
   const colorScheme = useColorScheme();
+  const { flights } = useFlights();
 
-  const flightInfo = {
+  // Default flight info if no user flights
+  const defaultFlightInfo = {
     flightNumber: 'DL1234',
     airline: 'Delta Air Lines',
     date: 'December 15, 2024',
@@ -34,13 +37,39 @@ export default function BoardingPassScreen() {
       gate: 'B8',
     },
     passenger: {
-      name: 'John Doe',
+      name: 'Mohamed Ali',
       seat: '12A',
-      class: 'Economy',
+      class: 'First Class',
     },
     boardingTime: '10:00 AM',
     status: 'On Time',
   };
+
+  // Use first user flight if available, otherwise use default
+  const flightInfo = flights.length > 0 ? {
+    flightNumber: flights[0].flightNumber,
+    airline: flights[0].airline,
+    date: flights[0].travelDate,
+    departure: {
+      airport: 'ATL',
+      city: 'Atlanta',
+      time: flights[0].departureTime,
+      gate: flights[0].gate,
+    },
+    arrival: {
+      airport: 'LAX',
+      city: 'Los Angeles',
+      time: '12:45 PM', // This would need to be calculated based on flight duration
+      gate: 'B8',
+    },
+    passenger: {
+      name: 'Mohamed Ali',
+      seat: '12A',
+      class: 'First Class',
+    },
+    boardingTime: '10:00 AM',
+    status: flights[0].status,
+  } : defaultFlightInfo;
 
   const handleDownload = () => {
     Alert.alert('Download', 'Boarding pass downloaded successfully');

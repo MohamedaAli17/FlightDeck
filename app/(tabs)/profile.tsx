@@ -14,11 +14,13 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
 import { useColorScheme } from '../../hooks/useColorScheme';
 import { useAuth } from '../../contexts/AuthContext';
+import { useFavorites } from '../../contexts/FavoritesContext';
 import { router, useFocusEffect } from 'expo-router';
 
 export default function ProfileScreen() {
   const colorScheme = useColorScheme();
   const { user, logout } = useAuth();
+  const { favorites } = useFavorites();
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [locationEnabled, setLocationEnabled] = useState(true);
 
@@ -42,7 +44,7 @@ export default function ProfileScreen() {
       items: [
         { id: 'profile', label: 'Edit Profile', icon: 'person', action: 'navigate' },
         { id: 'preferences', label: 'Preferences', icon: 'settings', action: 'navigate' },
-        { id: 'favorites', label: 'Saved Favorites', icon: 'heart', action: 'navigate', badge: '12' },
+        { id: 'favorites', label: 'Saved Favorites', icon: 'heart', action: 'navigate', badge: favorites.length.toString() },
         { id: 'history', label: 'Recent Activity', icon: 'time', action: 'navigate' },
       ],
     },
@@ -215,7 +217,7 @@ export default function ProfileScreen() {
           </View>
           <View style={[styles.statCard, { backgroundColor: Colors[colorScheme ?? 'light'].surface }]}>
             <Ionicons name="heart" size={24} color={Colors[colorScheme ?? 'light'].primary} />
-            <Text style={[styles.statNumber, { color: Colors[colorScheme ?? 'light'].text }]}>12</Text>
+            <Text style={[styles.statNumber, { color: Colors[colorScheme ?? 'light'].text }]}>{favorites.length}</Text>
             <Text style={[styles.statLabel, { color: Colors[colorScheme ?? 'light'].icon }]}>Favorites</Text>
           </View>
           <View style={[styles.statCard, { backgroundColor: Colors[colorScheme ?? 'light'].surface }]}>

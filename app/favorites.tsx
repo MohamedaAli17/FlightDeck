@@ -1,147 +1,96 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
   View,
   Text,
   StyleSheet,
+  ScrollView,
   TouchableOpacity,
   SafeAreaView,
   StatusBar,
-  ScrollView,
-  FlatList,
   Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/Colors';
 import { useColorScheme } from '../hooks/useColorScheme';
+import { useFavorites } from '../contexts/FavoritesContext';
 import { router } from 'expo-router';
+import RestaurantLogo from '../components/RestaurantLogo';
 
 export default function FavoritesScreen() {
   const colorScheme = useColorScheme();
-  const [activeTab, setActiveTab] = useState('all');
+  const { favorites, removeFromFavorites, clearFavorites } = useFavorites();
 
-  const favorites = [
-    {
-      id: 1,
-      name: 'Chick-fil-A',
-      type: 'Restaurant',
-      category: 'food',
-      rating: 4.5,
-      distance: '2 min walk',
-      image: '🍔',
-      location: 'Concourse A',
-    },
-    {
-      id: 2,
-      name: 'Brookstone',
-      type: 'Shopping',
-      category: 'shopping',
-      rating: 4.2,
-      distance: '5 min walk',
-      image: '🛒',
-      location: 'Concourse B',
-    },
-    {
-      id: 3,
-      name: 'Airport Lounge',
-      type: 'Relaxation',
-      category: 'activities',
-      rating: 4.8,
-      distance: '8 min walk',
-      image: '🛋️',
-      location: 'Concourse C',
-    },
-    {
-      id: 4,
-      name: 'Starbucks',
-      type: 'Coffee',
-      category: 'food',
-      rating: 4.3,
-      distance: '3 min walk',
-      image: '☕',
-      location: 'Concourse A',
-    },
-    {
-      id: 5,
-      name: 'Duty Free Shop',
-      type: 'Shopping',
-      category: 'shopping',
-      rating: 4.1,
-      distance: '10 min walk',
-      image: '🛍️',
-      location: 'Concourse D',
-    },
-  ];
-
-  const tabs = [
-    { id: 'all', label: 'All', count: favorites.length },
-    { id: 'food', label: 'Food', count: favorites.filter(f => f.category === 'food').length },
-    { id: 'shopping', label: 'Shopping', count: favorites.filter(f => f.category === 'shopping').length },
-    { id: 'activities', label: 'Activities', count: favorites.filter(f => f.category === 'activities').length },
-  ];
-
-  const filteredFavorites = activeTab === 'all' 
-    ? favorites 
-    : favorites.filter(f => f.category === activeTab);
-
-  const handleRemoveFavorite = (id: number) => {
+  const handleRemoveFavorite = (restaurantId: number, restaurantName: string) => {
     Alert.alert(
-      'Remove Favorite',
-      'Are you sure you want to remove this item from your favorites?',
+      'Remove from Favorites',
+      `Are you sure you want to remove "${restaurantName}" from your favorites?`,
       [
-        { text: 'Cancel', style: 'cancel' },
-        { 
-          text: 'Remove', 
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Remove',
           style: 'destructive',
-          onPress: () => {
-            Alert.alert('Success', 'Item removed from favorites');
-          }
+          onPress: async () => {
+            try {
+              await removeFromFavorites(restaurantId);
+            } catch (error) {
+              console.error('Error removing favorite:', error);
+            }
+          },
         },
       ]
     );
   };
 
-  const renderFavoriteItem = ({ item }: { item: any }) => (
-    <TouchableOpacity 
-      style={[styles.favoriteItem, { backgroundColor: Colors[colorScheme ?? 'light'].surface }]}
-      onPress={() => router.push('/restaurant-detail' as any)}
-    >
-      <View style={styles.itemLeft}>
-        <Text style={styles.itemImage}>{item.image}</Text>
-        <View style={styles.itemInfo}>
-          <Text style={[styles.itemName, { color: Colors[colorScheme ?? 'light'].text }]}>
-            {item.name}
-          </Text>
-          <Text style={[styles.itemType, { color: Colors[colorScheme ?? 'light'].icon }]}>
-            {item.type} • {item.location}
-          </Text>
-          <View style={styles.itemRating}>
-            <Ionicons name="star" size={14} color={Colors[colorScheme ?? 'light'].accent} />
-            <Text style={[styles.ratingText, { color: Colors[colorScheme ?? 'light'].text }]}>
-              {item.rating} • {item.distance}
-            </Text>
-          </View>
-        </View>
-      </View>
-      
-      <View style={styles.itemRight}>
-        <TouchableOpacity 
-          style={styles.removeButton}
-          onPress={() => handleRemoveFavorite(item.id)}
-        >
-          <Ionicons 
-            name="heart" 
-            size={20} 
-            color={Colors[colorScheme ?? 'light'].accent} 
-          />
-        </TouchableOpacity>
-        <Ionicons 
-          name="chevron-forward" 
-          size={20} 
-          color={Colors[colorScheme ?? 'light'].icon} 
-        />
-      </View>
-    </TouchableOpacity>
-  );
+  const handleClearAllFavorites = () => {
+    Alert.alert(
+      'Clear All Favorites',
+      'Are you sure you want to remove all restaurants from your favorites?',
+      [
+        {
+          text: 'Cancel',
+          style: 'cancel',
+        },
+        {
+          text: 'Clear All',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await clearFavorites();
+            } catch (error) {
+              console.error('Error clearing favorites:', error);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleRestaurantPress = (restaurantId: number) => {
+    router.push({
+      pathname: '/restaurant-detail',
+      params: { id: restaurantId.toString() }
+    } as any);
+  };
+
+  const formatDate = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    if (diffDays === 1) {
+      return 'Added today';
+    } else if (diffDays === 2) {
+      return 'Added yesterday';
+    } else if (diffDays <= 7) {
+      return `Added ${diffDays - 1} days ago`;
+    } else {
+      return date.toLocaleDateString();
+    }
+  };
 
   return (
     <SafeAreaView style={[styles.container, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
@@ -159,45 +108,20 @@ export default function FavoritesScreen() {
         <Text style={[styles.headerTitle, { color: Colors[colorScheme ?? 'light'].text }]}>
           Saved Favorites
         </Text>
-        <View style={{ width: 24 }} />
+        {favorites.length > 0 && (
+          <TouchableOpacity onPress={handleClearAllFavorites}>
+            <Ionicons 
+              name="trash-outline" 
+              size={24} 
+              color={Colors[colorScheme ?? 'light'].error} 
+            />
+          </TouchableOpacity>
+        )}
       </View>
 
-      {/* Tabs */}
-      <ScrollView 
-        horizontal 
-        showsHorizontalScrollIndicator={false}
-        style={styles.tabsContainer}
-        contentContainerStyle={styles.tabsContent}
-      >
-        {tabs.map((tab) => (
-          <TouchableOpacity
-            key={tab.id}
-            style={[
-              styles.tab,
-              activeTab === tab.id && { backgroundColor: Colors[colorScheme ?? 'light'].primary }
-            ]}
-            onPress={() => setActiveTab(tab.id)}
-          >
-            <Text style={[
-              styles.tabLabel,
-              { color: activeTab === tab.id ? Colors[colorScheme ?? 'light'].background : Colors[colorScheme ?? 'light'].text }
-            ]}>
-              {tab.label} ({tab.count})
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
-      {/* Favorites List */}
-      <FlatList
-        data={filteredFavorites}
-        renderItem={renderFavoriteItem}
-        keyExtractor={(item) => item.id.toString()}
-        style={styles.list}
-        contentContainerStyle={styles.listContent}
-        showsVerticalScrollIndicator={false}
-        ListEmptyComponent={
-          <View style={styles.emptyContainer}>
+      <ScrollView style={styles.content} showsVerticalScrollIndicator={false}>
+        {favorites.length === 0 ? (
+          <View style={styles.emptyState}>
             <Ionicons 
               name="heart-outline" 
               size={64} 
@@ -207,19 +131,93 @@ export default function FavoritesScreen() {
               No favorites yet
             </Text>
             <Text style={[styles.emptySubtitle, { color: Colors[colorScheme ?? 'light'].icon }]}>
-              Start exploring and save your favorite places
+              Start exploring restaurants and save your favorites by tapping the heart icon
             </Text>
             <TouchableOpacity 
               style={[styles.exploreButton, { backgroundColor: Colors[colorScheme ?? 'light'].primary }]}
               onPress={() => router.push('/(tabs)/food' as any)}
             >
+              <Ionicons name="restaurant" size={20} color={Colors[colorScheme ?? 'light'].background} />
               <Text style={[styles.exploreButtonText, { color: Colors[colorScheme ?? 'light'].background }]}>
-                Explore Now
+                Explore Restaurants
               </Text>
             </TouchableOpacity>
           </View>
-        }
-      />
+        ) : (
+          <>
+            <View style={styles.statsContainer}>
+              <Text style={[styles.statsText, { color: Colors[colorScheme ?? 'light'].text }]}>
+                {favorites.length} {favorites.length === 1 ? 'restaurant' : 'restaurants'} saved
+              </Text>
+            </View>
+
+            {favorites.map((restaurant) => (
+              <TouchableOpacity
+                key={restaurant.id}
+                style={[styles.favoriteCard, { backgroundColor: Colors[colorScheme ?? 'light'].surface }]}
+                onPress={() => handleRestaurantPress(restaurant.id)}
+              >
+                <View style={styles.restaurantImage}>
+                  <RestaurantLogo 
+                    name={restaurant.name}
+                    cuisine={restaurant.cuisine}
+                    size={60}
+                  />
+                </View>
+                
+                <View style={styles.restaurantInfo}>
+                  <Text style={[styles.restaurantName, { color: Colors[colorScheme ?? 'light'].text }]}>
+                    {restaurant.name}
+                  </Text>
+                  <Text style={[styles.restaurantCuisine, { color: Colors[colorScheme ?? 'light'].icon }]}>
+                    {restaurant.cuisine} • {restaurant.price}
+                  </Text>
+                  <View style={styles.restaurantDetails}>
+                    <View style={styles.ratingContainer}>
+                      <Ionicons name="star" size={14} color={Colors[colorScheme ?? 'light'].accent} />
+                      <Text style={[styles.rating, { color: Colors[colorScheme ?? 'light'].text }]}>
+                        {restaurant.rating}
+                      </Text>
+                    </View>
+                    <Text style={[styles.location, { color: Colors[colorScheme ?? 'light'].icon }]}>
+                      {restaurant.location}
+                    </Text>
+                    <Text style={[styles.distance, { color: Colors[colorScheme ?? 'light'].icon }]}>
+                      {restaurant.distance}
+                    </Text>
+                  </View>
+                  <Text style={[styles.addedDate, { color: Colors[colorScheme ?? 'light'].icon }]}>
+                    {formatDate(restaurant.addedAt)}
+                  </Text>
+                </View>
+
+                <View style={styles.actions}>
+                  <TouchableOpacity
+                    style={styles.removeButton}
+                    onPress={() => handleRemoveFavorite(restaurant.id, restaurant.name)}
+                  >
+                    <Ionicons 
+                      name="heart" 
+                      size={20} 
+                      color={Colors[colorScheme ?? 'light'].error} 
+                    />
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={styles.navigateButton}
+                    onPress={() => router.push('/(tabs)/map' as any)}
+                  >
+                    <Ionicons 
+                      name="navigate" 
+                      size={20} 
+                      color={Colors[colorScheme ?? 'light'].primary} 
+                    />
+                  </TouchableOpacity>
+                </View>
+              </TouchableOpacity>
+            ))}
+          </>
+        )}
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -234,44 +232,57 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     paddingHorizontal: 20,
     paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: 'bold',
   },
-  tabsContainer: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-  },
-  tabsContent: {
+  content: {
+    flex: 1,
     paddingHorizontal: 20,
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 80,
+  },
+  emptyTitle: {
+    fontSize: 24,
+    fontWeight: 'bold',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  emptySubtitle: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 32,
+    paddingHorizontal: 40,
+    lineHeight: 24,
+  },
+  exploreButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 24,
     paddingVertical: 12,
+    borderRadius: 12,
   },
-  tab: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 20,
-    marginRight: 12,
+  exploreButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginLeft: 8,
   },
-  tabLabel: {
-    fontSize: 14,
+  statsContainer: {
+    marginBottom: 20,
+  },
+  statsText: {
+    fontSize: 16,
     fontWeight: '600',
   },
-  list: {
-    flex: 1,
-  },
-  listContent: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-  },
-  favoriteItem: {
+  favoriteCard: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 16,
     marginBottom: 12,
     shadowColor: '#000',
     shadowOffset: {
@@ -282,69 +293,58 @@ const styles = StyleSheet.create({
     shadowRadius: 4,
     elevation: 3,
   },
-  itemLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  restaurantImage: {
+    marginRight: 16,
+  },
+  restaurantInfo: {
     flex: 1,
   },
-  itemImage: {
-    fontSize: 32,
-    marginRight: 12,
-  },
-  itemInfo: {
-    flex: 1,
-  },
-  itemName: {
-    fontSize: 16,
+  restaurantName: {
+    fontSize: 18,
     fontWeight: 'bold',
     marginBottom: 4,
   },
-  itemType: {
+  restaurantCuisine: {
     fontSize: 14,
-    marginBottom: 4,
+    marginBottom: 8,
   },
-  itemRating: {
+  restaurantDetails: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 8,
   },
-  ratingText: {
-    fontSize: 12,
+  ratingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  rating: {
+    fontSize: 14,
+    fontWeight: '600',
     marginLeft: 4,
   },
-  itemRight: {
-    flexDirection: 'row',
+  location: {
+    fontSize: 14,
+    marginRight: 12,
+  },
+  distance: {
+    fontSize: 14,
+  },
+  addedDate: {
+    fontSize: 12,
+  },
+  actions: {
     alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingLeft: 12,
   },
   removeButton: {
     padding: 8,
-    marginRight: 8,
-  },
-  emptyContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: 60,
-  },
-  emptyTitle: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginTop: 16,
     marginBottom: 8,
   },
-  emptySubtitle: {
-    fontSize: 16,
-    textAlign: 'center',
-    marginBottom: 24,
-    paddingHorizontal: 40,
-  },
-  exploreButton: {
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  exploreButtonText: {
-    fontSize: 16,
-    fontWeight: '600',
+  navigateButton: {
+    padding: 8,
   },
 });
+
 

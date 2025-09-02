@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,19 +9,96 @@ import {
   StatusBar,
   Dimensions,
   Image,
+  Modal,
+  TextInput,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/Colors';
 import { useColorScheme } from '../hooks/useColorScheme';
 import { router, useLocalSearchParams } from 'expo-router';
 import RestaurantLogo from '../components/RestaurantLogo';
+import { useFavorites } from '../contexts/FavoritesContext';
+import { useReviews } from '../contexts/ReviewsContext';
 
 const { width } = Dimensions.get('window');
+
+// Helper function to format relative time
+const formatRelativeTime = (timestamp: Date | string): string => {
+  const now = new Date();
+  const reviewTime = new Date(timestamp);
+  
+  // Check if the date is valid
+  if (isNaN(reviewTime.getTime())) {
+    console.warn('Invalid timestamp received:', timestamp);
+    return 'Recently';
+  }
+  
+  const diffInSeconds = Math.floor((now.getTime() - reviewTime.getTime()) / 1000);
+
+  if (diffInSeconds < 60) {
+    return 'Just now';
+  } else if (diffInSeconds < 3600) {
+    const minutes = Math.floor(diffInSeconds / 60);
+    return `${minutes} minute${minutes === 1 ? '' : 's'} ago`;
+  } else if (diffInSeconds < 86400) {
+    const hours = Math.floor(diffInSeconds / 3600);
+    return `${hours} hour${hours === 1 ? '' : 's'} ago`;
+  } else if (diffInSeconds < 2592000) {
+    const days = Math.floor(diffInSeconds / 86400);
+    return `${days} day${days === 1 ? '' : 's'} ago`;
+  } else if (diffInSeconds < 31536000) {
+    const months = Math.floor(diffInSeconds / 2592000);
+    return `${months} month${months === 1 ? '' : 's'} ago`;
+  } else {
+    const years = Math.floor(diffInSeconds / 31536000);
+    return `${years} year${years === 1 ? '' : 's'} ago`;
+  }
+};
+
+// Component for live updating timestamp
+const LiveTimestamp = ({ timestamp, colorScheme }: { timestamp: Date | string; colorScheme: 'light' | 'dark' }) => {
+  const [relativeTime, setRelativeTime] = useState(() => {
+    try {
+      return formatRelativeTime(timestamp);
+    } catch (error) {
+      console.error('Error formatting timestamp:', error, timestamp);
+      return 'Recently';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      // Update immediately
+      setRelativeTime(formatRelativeTime(timestamp));
+
+      // Set up interval to update every minute
+      const interval = setInterval(() => {
+        setRelativeTime(formatRelativeTime(timestamp));
+      }, 60000); // Update every minute
+
+      return () => clearInterval(interval);
+    } catch (error) {
+      console.error('Error in LiveTimestamp useEffect:', error);
+      setRelativeTime('Recently');
+    }
+  }, [timestamp]);
+
+  return <Text style={[styles.reviewDate, { color: Colors[colorScheme].icon }]}>{relativeTime}</Text>;
+};
 
 export default function RestaurantDetailScreen() {
   const colorScheme = useColorScheme();
   const params = useLocalSearchParams();
   const [activeTab, setActiveTab] = useState('overview');
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [newReview, setNewReview] = useState({
+    rating: 0,
+    name: '',
+    comment: ''
+  });
+  const { isFavorite, addToFavorites, removeFromFavorites } = useFavorites();
+  const { addReview, getReviews, cleanupInvalidReviews } = useReviews();
 
   // Comprehensive restaurant data that matches the food screen
   const restaurants = [
@@ -181,9 +258,9 @@ export default function RestaurantDetailScreen() {
         { id: 29, name: 'Red Beans & Rice', price: '$14.00', description: 'Louisiana red beans and rice', image: '🍚' },
       ],
       reviews: [
-        { id: 1, user: 'Sarah M.', rating: 5, comment: 'Amazing Southern cuisine! The fried chicken is perfection.', date: '2 days ago' },
-        { id: 2, user: 'John D.', rating: 4, comment: 'Great atmosphere and authentic Southern flavors.', date: '1 week ago' },
-        { id: 3, user: 'Emma L.', rating: 5, comment: 'Best restaurant in the airport! Highly recommend the shrimp & grits.', date: '2 weeks ago' },
+        { id: 1, user: 'Sarah M.', rating: 5, comment: 'Amazing Southern cuisine! The fried chicken is perfection.', date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000 - 3 * 60 * 60 * 1000).toISOString() },
+        { id: 2, user: 'John D.', rating: 4, comment: 'Great atmosphere and authentic Southern flavors.', date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000 - 5 * 60 * 60 * 1000).toISOString() },
+        { id: 3, user: 'Emma L.', rating: 5, comment: 'Best restaurant in the airport! Highly recommend the shrimp & grits.', date: new Date(Date.now() - 14 * 24 * 60 * 60 * 1000 - 2 * 60 * 60 * 1000).toISOString() },
       ],
     },
     {
@@ -347,9 +424,9 @@ export default function RestaurantDetailScreen() {
         { id: 29, name: 'Apple Pie', price: '$6.50', description: 'Warm apple pie with ice cream', image: '🍎' },
       ],
       reviews: [
-        { id: 1, user: 'Michael R.', rating: 5, comment: 'Best soul food in Atlanta! The fried chicken is incredible.', date: '1 day ago' },
-        { id: 2, user: 'Lisa T.', rating: 4, comment: 'Authentic Southern cooking. Love the atmosphere.', date: '3 days ago' },
-        { id: 3, user: 'David K.', rating: 4, comment: 'Great comfort food. Perfect for airport dining.', date: '1 week ago' },
+        { id: 1, user: 'Michael R.', rating: 5, comment: 'Best soul food in Atlanta! The fried chicken is incredible.', date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000 - 2 * 60 * 60 * 1000).toISOString() },
+        { id: 2, user: 'Lisa T.', rating: 4, comment: 'Authentic Southern cooking. Love the atmosphere.', date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000 - 1 * 60 * 60 * 1000).toISOString() },
+        { id: 3, user: 'David K.', rating: 4, comment: 'Great comfort food. Perfect for airport dining.', date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000 - 4 * 60 * 60 * 1000).toISOString() },
       ],
     },
     {
@@ -508,9 +585,9 @@ export default function RestaurantDetailScreen() {
         { id: 29, name: 'Chocolate Lava Cake', price: '$12.00', description: 'Warm chocolate lava cake', image: '🍰' },
       ],
       reviews: [
-        { id: 1, user: 'Jennifer L.', rating: 4, comment: 'Excellent seafood! The crab cakes are amazing.', date: '2 days ago' },
-        { id: 2, user: 'Robert M.', rating: 4, comment: 'Fresh and delicious. Great seafood options.', date: '4 days ago' },
-        { id: 3, user: 'Amanda S.', rating: 5, comment: 'Best seafood restaurant in the airport!', date: '1 week ago' },
+        { id: 1, user: 'Jennifer L.', rating: 4, comment: 'Excellent seafood! The crab cakes are amazing.', date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+        { id: 2, user: 'Robert M.', rating: 4, comment: 'Fresh and delicious. Great seafood options.', date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString() },
+        { id: 3, user: 'Amanda S.', rating: 5, comment: 'Best seafood restaurant in the airport!', date: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString() },
       ],
     },
     {
@@ -669,9 +746,9 @@ export default function RestaurantDetailScreen() {
         { id: 29, name: 'Iced Tea', price: '$2.50', description: 'Sweet iced tea', image: '🥤' },
       ],
       reviews: [
-        { id: 1, user: 'Tom W.', rating: 4, comment: 'Classic Atlanta institution! Love the chili dogs.', date: '1 day ago' },
-        { id: 2, user: 'Rachel B.', rating: 4, comment: 'Great fast food. Perfect for a quick meal.', date: '2 days ago' },
-        { id: 3, user: 'Chris L.', rating: 5, comment: 'Best chili dogs ever! Must try the Frosted Orange.', date: '3 days ago' },
+        { id: 1, user: 'Tom W.', rating: 4, comment: 'Classic Atlanta institution! Love the chili dogs.', date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+        { id: 2, user: 'Rachel B.', rating: 4, comment: 'Great fast food. Perfect for a quick meal.', date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+        { id: 3, user: 'Chris L.', rating: 5, comment: 'Best chili dogs ever! Must try the Frosted Orange.', date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
       ],
     },
     {
@@ -830,9 +907,9 @@ export default function RestaurantDetailScreen() {
         { id: 29, name: 'Chocolate Cake', price: '$7.00', description: 'Rich chocolate layer cake', image: '🍰' },
       ],
       reviews: [
-        { id: 1, user: 'Kevin J.', rating: 5, comment: 'Amazing BBQ! The ribs are fall-off-the-bone tender.', date: '1 day ago' },
-        { id: 2, user: 'Maria G.', rating: 4, comment: 'Great barbecue flavors. Love the pulled pork.', date: '2 days ago' },
-        { id: 3, user: 'James H.', rating: 5, comment: 'Best BBQ in the airport! Authentic Georgia style.', date: '4 days ago' },
+        { id: 1, user: 'Kevin J.', rating: 5, comment: 'Amazing BBQ! The ribs are fall-off-the-bone tender.', date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+        { id: 2, user: 'Maria G.', rating: 4, comment: 'Great barbecue flavors. Love the pulled pork.', date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+        { id: 3, user: 'James H.', rating: 5, comment: 'Best BBQ in the airport! Authentic Georgia style.', date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString() },
       ],
     },
     {
@@ -997,9 +1074,9 @@ export default function RestaurantDetailScreen() {
         { id: 'a29', name: 'Sweet Tea', price: '$2.50', description: 'Traditional Southern sweet tea', image: '🥤' },
       ],
       reviews: [
-        { id: 1, user: 'Alex P.', rating: 4, comment: 'Great chicken sandwich! Always consistent.', date: '1 day ago' },
-        { id: 2, user: 'Sarah K.', rating: 4, comment: 'Love the waffle fries. Quick service.', date: '2 days ago' },
-        { id: 3, user: 'Mike R.', rating: 5, comment: 'Best fast food chicken! Fresh and delicious.', date: '3 days ago' },
+        { id: 1, user: 'Alex P.', rating: 4, comment: 'Great chicken sandwich! Always consistent.', date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+        { id: 2, user: 'Sarah K.', rating: 4, comment: 'Love the waffle fries. Quick service.', date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+        { id: 3, user: 'Mike R.', rating: 5, comment: 'Best fast food chicken! Fresh and delicious.', date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
       ],
     },
     {
@@ -1158,9 +1235,9 @@ export default function RestaurantDetailScreen() {
         { id: 29, name: 'Green Tea', price: '$3.00', description: 'Traditional green tea', image: '🍵' },
       ],
       reviews: [
-        { id: 1, user: 'Lisa M.', rating: 4, comment: 'Good Asian fusion. Love the Dynamite Shrimp.', date: '1 day ago' },
-        { id: 2, user: 'David C.', rating: 4, comment: 'Fresh sushi and good service.', date: '2 days ago' },
-        { id: 3, user: 'Anna L.', rating: 3, comment: 'Decent food but a bit pricey for airport dining.', date: '4 days ago' },
+        { id: 1, user: 'Lisa M.', rating: 4, comment: 'Good Asian fusion. Love the Dynamite Shrimp.', date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+        { id: 2, user: 'David C.', rating: 4, comment: 'Fresh sushi and good service.', date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+        { id: 3, user: 'Anna L.', rating: 3, comment: 'Decent food but a bit pricey for airport dining.', date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString() },
              ],
      },
      {
@@ -1203,11 +1280,11 @@ export default function RestaurantDetailScreen() {
          { id: 3, name: 'Mozzarella Sticks', price: '$10.00', description: 'Breaded mozzarella with marinara', image: '🧀' },
          { id: 4, name: 'Strawberry Daiquiri', price: '$9.00', description: 'Frozen strawberry cocktail', image: '🍹' },
        ],
-       reviews: [
-         { id: 1, user: 'Jessica M.', rating: 4, comment: 'Good American food. Love the loaded potato skins.', date: '1 day ago' },
-         { id: 2, user: 'Brian K.', rating: 3, comment: 'Decent food but service was slow.', date: '2 days ago' },
-         { id: 3, user: 'Nicole R.', rating: 4, comment: 'Classic Friday\'s experience. Good cocktails.', date: '3 days ago' },
-       ],
+             reviews: [
+        { id: 1, user: 'Jessica M.', rating: 4, comment: 'Good American food. Love the loaded potato skins.', date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+        { id: 2, user: 'Brian K.', rating: 3, comment: 'Decent food but service was slow.', date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+        { id: 3, user: 'Nicole R.', rating: 4, comment: 'Classic Friday\'s experience. Good cocktails.', date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
+      ],
      },
      {
        id: 9,
@@ -1249,11 +1326,11 @@ export default function RestaurantDetailScreen() {
          { id: 3, name: 'Croissant', price: '$3.50', description: 'Buttery French pastry', image: '🥐' },
          { id: 4, name: 'Hot Chocolate', price: '$5.00', description: 'Rich European hot chocolate', image: '🍫' },
        ],
-       reviews: [
-         { id: 1, user: 'Sophie L.', rating: 5, comment: 'Amazing desserts! The tiramisu is perfection.', date: '1 day ago' },
-         { id: 2, user: 'Marcus T.', rating: 4, comment: 'Great coffee and pastries. Elegant atmosphere.', date: '2 days ago' },
-         { id: 3, user: 'Elena K.', rating: 5, comment: 'Best café in the airport! Love the European vibe.', date: '4 days ago' },
-       ],
+             reviews: [
+        { id: 1, user: 'Sophie L.', rating: 5, comment: 'Amazing desserts! The tiramisu is perfection.', date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+        { id: 2, user: 'Marcus T.', rating: 4, comment: 'Great coffee and pastries. Elegant atmosphere.', date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+        { id: 3, user: 'Elena K.', rating: 5, comment: 'Best café in the airport! Love the European vibe.', date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString() },
+      ],
      },
             {
          id: 10,
@@ -1300,10 +1377,10 @@ export default function RestaurantDetailScreen() {
            { id: 3, name: 'Bacon Gouda Sandwich', price: '$6.50', description: 'Breakfast sandwich with bacon and cheese', image: '🥪' },
            { id: 4, name: 'Iced Latte', price: '$4.50', description: 'Cold espresso with milk', image: '🧊' },
          ],
-         reviews: [
-           { id: 1, user: 'Amanda P.', rating: 4, comment: 'Consistent Starbucks quality. Quick service.', date: '1 day ago' },
-           { id: 2, user: 'Ryan S.', rating: 4, comment: 'Good coffee and breakfast options.', date: '2 days ago' },
-           { id: 3, user: 'Katie M.', rating: 3, comment: 'Standard Starbucks experience. Busy location.', date: '3 days ago' },
+               reviews: [
+        { id: 1, user: 'Amanda P.', rating: 4, comment: 'Consistent Starbucks quality. Quick service.', date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+        { id: 2, user: 'Ryan S.', rating: 4, comment: 'Good coffee and breakfast options.', date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+        { id: 3, user: 'Katie M.', rating: 3, comment: 'Standard Starbucks experience. Busy location.', date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
                 ],
          },
        {
@@ -1346,11 +1423,11 @@ export default function RestaurantDetailScreen() {
            { id: 3, name: 'Naked Taco Salad', price: '$12.00', description: 'Fresh salad with Mexican toppings', image: '🥬' },
            { id: 4, name: 'Chips & Queso', price: '$4.50', description: 'Tortilla chips with melted cheese', image: '🧀' },
          ],
-         reviews: [
-           { id: 1, user: 'Carlos M.', rating: 4, comment: 'Good Mexican food. Love the customizable options.', date: '1 day ago' },
-           { id: 2, user: 'Maria S.', rating: 3, comment: 'Decent fast Mexican. Quick service.', date: '2 days ago' },
-           { id: 3, user: 'Jose L.', rating: 4, comment: 'Fresh ingredients and good portions.', date: '3 days ago' },
-         ],
+               reviews: [
+        { id: 1, user: 'Carlos M.', rating: 4, comment: 'Good Mexican food. Love the customizable options.', date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+        { id: 2, user: 'Maria S.', rating: 3, comment: 'Decent fast Mexican. Quick service.', date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+        { id: 3, user: 'Jose L.', rating: 4, comment: 'Fresh ingredients and good portions.', date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
+      ],
        },
        {
          id: 12,
@@ -1392,11 +1469,11 @@ export default function RestaurantDetailScreen() {
            { id: 3, name: 'Onion Rings', price: '$4.50', description: 'Crispy onion rings', image: '🧅' },
            { id: 4, name: 'Oreo Shake', price: '$5.00', description: 'Creamy Oreo milkshake', image: '🥤' },
          ],
-         reviews: [
-           { id: 1, user: 'Mike T.', rating: 3, comment: 'Standard Burger King. Quick and convenient.', date: '1 day ago' },
-           { id: 2, user: 'Lisa R.', rating: 4, comment: 'Good flame-grilled burgers. Fast service.', date: '2 days ago' },
-           { id: 3, user: 'Tom K.', rating: 3, comment: 'Typical fast food experience.', date: '3 days ago' },
-         ],
+               reviews: [
+        { id: 1, user: 'Mike T.', rating: 3, comment: 'Standard Burger King. Quick and convenient.', date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+        { id: 2, user: 'Lisa R.', rating: 4, comment: 'Good flame-grilled burgers. Fast service.', date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+        { id: 3, user: 'Tom K.', rating: 3, comment: 'Typical fast food experience.', date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
+      ],
        },
        {
          id: 13,
@@ -1438,11 +1515,11 @@ export default function RestaurantDetailScreen() {
            { id: 3, name: 'Biscuits', price: '$2.50', description: 'Flaky buttermilk biscuits', image: '🍞' },
            { id: 4, name: 'Mardi Gras Mustard', price: '$0.50', description: 'Spicy mustard sauce', image: '🌶️' },
          ],
-         reviews: [
-           { id: 1, user: 'Derek L.', rating: 4, comment: 'Great spicy chicken! Love the Cajun flavors.', date: '1 day ago' },
-           { id: 2, user: 'Ashley M.', rating: 4, comment: 'Best fried chicken sandwich. Spicy and crispy.', date: '2 days ago' },
-           { id: 3, user: 'Brandon K.', rating: 5, comment: 'Amazing Louisiana-style food!', date: '3 days ago' },
-         ],
+               reviews: [
+        { id: 1, user: 'Derek L.', rating: 4, comment: 'Great spicy chicken! Love the Cajun flavors.', date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+        { id: 2, user: 'Ashley M.', rating: 4, comment: 'Best fried chicken sandwich. Spicy and crispy.', date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+        { id: 3, user: 'Brandon K.', rating: 5, comment: 'Amazing Louisiana-style food!', date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
+      ],
        },
        {
          id: 14,
@@ -1484,11 +1561,11 @@ export default function RestaurantDetailScreen() {
            { id: 3, name: 'Truffle Fries', price: '$12.00', description: 'Crispy fries with truffle oil', image: '🍟' },
            { id: 4, name: 'Chocolate Lava Cake', price: '$16.00', description: 'Warm chocolate cake with vanilla ice cream', image: '🍰' },
          ],
-         reviews: [
-           { id: 1, user: 'Robert W.', rating: 5, comment: 'Exceptional steakhouse! The ribeye is perfection.', date: '1 day ago' },
-           { id: 2, user: 'Jennifer H.', rating: 5, comment: 'Best fine dining in the airport. Excellent service.', date: '2 days ago' },
-           { id: 3, user: 'Michael S.', rating: 4, comment: 'Great steaks and wine selection. Pricey but worth it.', date: '3 days ago' },
-         ],
+               reviews: [
+        { id: 1, user: 'Robert W.', rating: 5, comment: 'Exceptional steakhouse! The ribeye is perfection.', date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+        { id: 2, user: 'Jennifer H.', rating: 5, comment: 'Best fine dining in the airport. Excellent service.', date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+        { id: 3, user: 'Michael S.', rating: 4, comment: 'Great steaks and wine selection. Pricey but worth it.', date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
+      ],
        },
        {
          id: 15,
@@ -1530,11 +1607,11 @@ export default function RestaurantDetailScreen() {
            { id: 3, name: 'Fried Rice', price: '$4.50', description: 'Wok-fried rice with vegetables', image: '🍚' },
            { id: 4, name: 'Fortune Cookie', price: '$0.50', description: 'Traditional fortune cookie', image: '🥠' },
          ],
-         reviews: [
-           { id: 1, user: 'Amy L.', rating: 4, comment: 'Good Chinese fast food. Love the orange chicken.', date: '1 day ago' },
-           { id: 2, user: 'David C.', rating: 3, comment: 'Decent food but can be greasy.', date: '2 days ago' },
-           { id: 3, user: 'Sarah K.', rating: 4, comment: 'Quick and tasty Chinese food.', date: '3 days ago' },
-         ],
+               reviews: [
+        { id: 1, user: 'Amy L.', rating: 4, comment: 'Good Chinese fast food. Love the orange chicken.', date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+        { id: 2, user: 'David C.', rating: 3, comment: 'Decent food but can be greasy.', date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+        { id: 3, user: 'Sarah K.', rating: 4, comment: 'Quick and tasty Chinese food.', date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
+      ],
        },
        {
          id: 16,
@@ -1576,11 +1653,11 @@ export default function RestaurantDetailScreen() {
            { id: 3, name: 'Beef \'n Cheddar', price: '$8.50', description: 'Roast beef with cheddar sauce', image: '🧀' },
            { id: 4, name: 'Jamocha Shake', price: '$4.50', description: 'Coffee-flavored milkshake', image: '🥤' },
          ],
-         reviews: [
-           { id: 1, user: 'Chris M.', rating: 4, comment: 'Great roast beef sandwiches! Love the curly fries.', date: '1 day ago' },
-           { id: 2, user: 'Jessica R.', rating: 3, comment: 'Good fast food option. Quick service.', date: '2 days ago' },
-           { id: 3, user: 'Mark L.', rating: 4, comment: 'Best roast beef in fast food.', date: '3 days ago' },
-         ],
+               reviews: [
+        { id: 1, user: 'Chris M.', rating: 4, comment: 'Great roast beef sandwiches! Love the curly fries.', date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+        { id: 2, user: 'Jessica R.', rating: 3, comment: 'Good fast food option. Quick service.', date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+        { id: 3, user: 'Mark L.', rating: 4, comment: 'Best roast beef in fast food.', date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
+      ],
        },
        {
          id: 17,
@@ -1627,11 +1704,11 @@ export default function RestaurantDetailScreen() {
            { id: 3, name: 'Bacon, Egg & Cheese', price: '$4.50', description: 'Breakfast sandwich with bacon', image: '🥪' },
            { id: 4, name: 'Iced Coffee', price: '$3.00', description: 'Cold coffee with cream and sugar', image: '🧊' },
          ],
-         reviews: [
-           { id: 1, user: 'Rachel S.', rating: 4, comment: 'Great coffee and donuts! Quick breakfast option.', date: '1 day ago' },
-           { id: 2, user: 'Kevin M.', rating: 4, comment: 'Consistent quality. Love the Boston Kreme donuts.', date: '2 days ago' },
-           { id: 3, user: 'Lisa T.', rating: 3, comment: 'Good coffee but can be busy in the morning.', date: '3 days ago' },
-         ],
+               reviews: [
+        { id: 1, user: 'Rachel S.', rating: 4, comment: 'Great coffee and donuts! Quick breakfast option.', date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+        { id: 2, user: 'Kevin M.', rating: 4, comment: 'Consistent quality. Love the Boston Kreme donuts.', date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+        { id: 3, user: 'Lisa T.', rating: 3, comment: 'Good coffee but can be busy in the morning.', date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
+      ],
        },
        {
          id: 18,
@@ -1673,10 +1750,181 @@ export default function RestaurantDetailScreen() {
            { id: 3, name: 'Hummus & Pita', price: '$8.00', description: 'Traditional hummus with warm pita', image: '🫓' },
            { id: 4, name: 'Baklava', price: '$9.00', description: 'Sweet pastry with honey and nuts', image: '🍯' },
          ],
+               reviews: [
+        { id: 1, user: 'Sophia K.', rating: 5, comment: 'Amazing Mediterranean food! The lamb chops are incredible.', date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+        { id: 2, user: 'Alex M.', rating: 4, comment: 'Great Mediterranean flavors. Excellent wine selection.', date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+        { id: 3, user: 'Nina R.', rating: 5, comment: 'Best Mediterranean restaurant in the airport!', date: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString() },
+      ],
+       },
+       {
+         id: 19,
+         name: 'Cat Cora\'s Kitchen',
+         description: 'Celebrity chef restaurant featuring Mediterranean-inspired cuisine with fresh, locally sourced ingredients. Experience the flavors of the Mediterranean with a modern American twist.',
+         rating: 4.3,
+         distance: '2 min walk',
+         price: '$$$',
+         cuisine: 'Mediterranean',
+         image: null,
+         recommended: true,
+         hours: '11:00 AM - 9:00 PM',
+         location: 'Concourse A',
+         phone: '+1 (404) 555-0141',
+         website: 'www.catcoraskitchen.com',
+         featuredItems: [
+           { 
+             id: 'f1', 
+             name: 'Mediterranean Sea Bass', 
+             price: '$32.00', 
+             description: 'Fresh sea bass with lemon, herbs, and olive oil', 
+             image: '🐟',
+             rating: '96% (89)',
+             tag: 'Chef\'s Special'
+           },
+           { 
+             id: 'f2', 
+             name: 'Lamb Chops', 
+             price: '$38.00', 
+             description: 'Grilled lamb chops with rosemary and garlic', 
+             image: '🍖',
+             rating: '94% (67)',
+             tag: 'Most Popular'
+           },
+           { 
+             id: 'f3', 
+             name: 'Greek Salad', 
+             price: '$16.00', 
+             description: 'Fresh greens with feta, olives, and vinaigrette', 
+             image: '🥗',
+             rating: '95% (78)',
+             tag: 'Fresh'
+           },
+         ],
+         allDayMenu: [
+           { id: 1, name: 'Mediterranean Sea Bass', price: '$32.00', description: 'Fresh sea bass with lemon, herbs, and olive oil', image: '🐟' },
+           { id: 2, name: 'Lamb Chops', price: '$38.00', description: 'Grilled lamb chops with rosemary and garlic', image: '🍖' },
+           { id: 3, name: 'Greek Salad', price: '$16.00', description: 'Fresh greens with feta, olives, and vinaigrette', image: '🥗' },
+           { id: 4, name: 'Hummus & Pita', price: '$12.00', description: 'Traditional hummus with warm pita bread', image: '🫓' },
+           { id: 5, name: 'Grilled Shrimp', price: '$28.00', description: 'Jumbo shrimp with Mediterranean spices', image: '🦐' },
+           { id: 6, name: 'Baklava', price: '$10.00', description: 'Sweet pastry with honey and nuts', image: '🍯' },
+         ],
          reviews: [
-           { id: 1, user: 'Sophia K.', rating: 5, comment: 'Amazing Mediterranean food! The lamb chops are incredible.', date: '1 day ago' },
-           { id: 2, user: 'Alex M.', rating: 4, comment: 'Great Mediterranean flavors. Excellent wine selection.', date: '2 days ago' },
-           { id: 3, user: 'Nina R.', rating: 5, comment: 'Best Mediterranean restaurant in the airport!', date: '3 days ago' },
+           { id: 1, user: 'Maria G.', rating: 5, comment: 'Amazing Mediterranean flavors! The sea bass is perfection.', date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+           { id: 2, user: 'Alex K.', rating: 4, comment: 'Great Mediterranean cuisine. Love the lamb chops.', date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+           { id: 3, user: 'Sophia L.', rating: 4, comment: 'Fresh ingredients and authentic flavors.', date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString() },
+         ],
+       },
+       {
+         id: 77,
+         name: 'Chicken + Beer (Ludacris\' restaurant)',
+         description: 'Celebrity chef restaurant with Southern fried chicken and craft beers. Experience authentic Southern comfort food with a modern twist, featuring locally sourced ingredients and innovative culinary techniques.',
+         rating: 4.4,
+         distance: '5 min walk',
+         price: '$$',
+         cuisine: 'Southern',
+         image: null,
+         recommended: true,
+         hours: '11:00 AM - 9:00 PM',
+         location: 'Concourse D',
+         phone: '+1 (404) 555-0199',
+         website: 'www.chickenplusbeer.com',
+         featuredItems: [
+           { 
+             id: 'f1', 
+             name: 'Southern Fried Chicken', 
+             price: '$18.50', 
+             description: 'Crispy buttermilk fried chicken with secret spices', 
+             image: '🍗',
+             rating: '98% (156)',
+             tag: 'Signature Dish'
+           },
+           { 
+             id: 'f2', 
+             name: 'Chicken & Waffles', 
+             price: '$22.00', 
+             description: 'Fried chicken with fluffy waffles and maple syrup', 
+             image: '🥞',
+             rating: '96% (134)',
+             tag: 'Most Popular'
+           },
+           { 
+             id: 'f3', 
+             name: 'Craft Beer Flight', 
+             price: '$16.00', 
+             description: 'Selection of local craft beers', 
+             image: '🍺',
+             rating: '94% (89)',
+             tag: 'Beverage'
+           },
+         ],
+         allDayMenu: [
+           { id: 1, name: 'Southern Fried Chicken', price: '$18.50', description: 'Crispy buttermilk fried chicken with secret spices', image: '🍗' },
+           { id: 2, name: 'Chicken & Waffles', price: '$22.00', description: 'Fried chicken with fluffy waffles and maple syrup', image: '🥞' },
+           { id: 3, name: 'Craft Beer Flight', price: '$16.00', description: 'Selection of local craft beers', image: '🍺' },
+           { id: 4, name: 'Mac & Cheese', price: '$8.00', description: 'Creamy macaroni and cheese', image: '🧀' },
+           { id: 5, name: 'Collard Greens', price: '$7.00', description: 'Slow-cooked collard greens with ham hock', image: '🥬' },
+           { id: 6, name: 'Sweet Tea', price: '$3.50', description: 'Traditional Southern sweet tea', image: '🥤' },
+         ],
+         reviews: [
+           { id: 1, user: 'Kevin M.', rating: 5, comment: 'Best fried chicken in the airport! Love the craft beer selection.', date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+           { id: 2, user: 'Lisa R.', rating: 4, comment: 'Great Southern comfort food. The chicken & waffles are amazing.', date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+           { id: 3, user: 'Mike T.', rating: 5, comment: 'Authentic Southern flavors with a modern twist!', date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString() },
+         ],
+       },
+       {
+         id: 93,
+         name: 'Ecco',
+         description: 'European fine dining with Mediterranean cuisine and wine. Experience sophisticated European dining with fresh, seasonal ingredients and an extensive wine list.',
+         rating: 4.5,
+         distance: '6 min walk',
+         price: '$$$',
+         cuisine: 'Mediterranean',
+         image: null,
+         recommended: true,
+         hours: '11:00 AM - 9:30 PM',
+         location: 'Concourse F',
+         phone: '+1 (404) 555-0215',
+         website: 'www.ecco.com',
+         featuredItems: [
+           { 
+             id: 'f1', 
+             name: 'Lamb Chops', 
+             price: '$42.00', 
+             description: 'Grilled lamb chops with herbs and red wine reduction', 
+             image: '🍖',
+             rating: '97% (78)',
+             tag: 'Chef\'s Special'
+           },
+           { 
+             id: 'f2', 
+             name: 'Mediterranean Salad', 
+             price: '$18.00', 
+             description: 'Fresh salad with olives, feta, and vinaigrette', 
+             image: '🥗',
+             rating: '95% (89)',
+             tag: 'Fresh'
+           },
+           { 
+             id: 'f3', 
+             name: 'Wine Flight', 
+             price: '$24.00', 
+             description: 'Selection of Mediterranean wines', 
+             image: '🍷',
+             rating: '96% (67)',
+             tag: 'Premium'
+           },
+         ],
+         allDayMenu: [
+           { id: 1, name: 'Lamb Chops', price: '$42.00', description: 'Grilled lamb chops with herbs and red wine reduction', image: '🍖' },
+           { id: 2, name: 'Mediterranean Salad', price: '$18.00', description: 'Fresh salad with olives, feta, and vinaigrette', image: '🥗' },
+           { id: 3, name: 'Wine Flight', price: '$24.00', description: 'Selection of Mediterranean wines', image: '🍷' },
+           { id: 4, name: 'Hummus & Pita', price: '$12.00', description: 'Traditional hummus with warm pita bread', image: '🫓' },
+           { id: 5, name: 'Grilled Salmon', price: '$36.00', description: 'Atlantic salmon with Mediterranean herbs', image: '🐟' },
+           { id: 6, name: 'Baklava', price: '$12.00', description: 'Sweet pastry with honey and nuts', image: '🍯' },
+         ],
+         reviews: [
+           { id: 1, user: 'Sophia K.', rating: 5, comment: 'Exceptional Mediterranean cuisine! The lamb chops are incredible.', date: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString() },
+           { id: 2, user: 'Alex M.', rating: 4, comment: 'Great Mediterranean flavors. Excellent wine selection.', date: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString() },
+           { id: 3, user: 'Nina R.', rating: 5, comment: 'Best Mediterranean restaurant in the airport!', date: new Date(Date.now() - 4 * 24 * 60 * 60 * 1000).toISOString() },
          ],
        },
      ];
@@ -1684,6 +1932,80 @@ export default function RestaurantDetailScreen() {
   // Get restaurant ID from params and find the restaurant
   const restaurantId = params.id ? parseInt(params.id as string) : 1;
   const restaurant = restaurants.find(r => r.id === restaurantId) || restaurants[0];
+
+  // Get reviews from context and combine with original reviews
+  const savedReviews = getReviews(restaurantId);
+  
+  // Filter out reviews with invalid dates and log them for debugging
+  const validSavedReviews = savedReviews.filter(review => {
+    const isValid = !isNaN(new Date(review.date).getTime());
+    if (!isValid) {
+      console.warn('Found review with invalid date:', review);
+    }
+    return isValid;
+  });
+  
+  const restaurantReviews = [...validSavedReviews, ...(restaurant.reviews || [])];
+
+  // Refresh reviews when restaurant changes
+  useEffect(() => {
+    // This will trigger a re-render when the restaurant changes
+  }, [restaurantId, savedReviews]);
+
+  // Clean up invalid reviews on mount
+  useEffect(() => {
+    cleanupInvalidReviews();
+  }, []);
+
+  const handleAddReview = async () => {
+    if (!newReview.name.trim() || !newReview.comment.trim() || newReview.rating === 0) {
+      Alert.alert('Missing Information', 'Please fill in all fields and select a rating');
+      return;
+    }
+
+    const reviewData = {
+      user: newReview.name,
+      rating: newReview.rating,
+      comment: newReview.comment,
+      date: new Date().toISOString() // Use actual timestamp
+    };
+
+    await addReview(restaurantId, reviewData);
+    setNewReview({ rating: 0, name: '', comment: '' });
+    setShowReviewModal(false);
+  };
+
+  const handleStarPress = (star: number) => {
+    setNewReview(prev => ({ ...prev, rating: star }));
+  };
+
+  // Check if this restaurant is in favorites
+  const isRestaurantFavorite = isFavorite(restaurant.id);
+
+  // Handle favorite toggle
+  const handleFavoriteToggle = async () => {
+    try {
+      if (isRestaurantFavorite) {
+        await removeFromFavorites(restaurant.id);
+      } else {
+        await addToFavorites({
+          id: restaurant.id,
+          name: restaurant.name,
+          description: restaurant.description,
+          rating: restaurant.rating,
+          distance: restaurant.distance,
+          price: restaurant.price,
+          cuisine: restaurant.cuisine,
+          location: restaurant.location,
+          hours: restaurant.hours,
+          phone: restaurant.phone,
+          website: restaurant.website,
+        });
+      }
+    } catch (error) {
+      console.error('Error toggling favorite:', error);
+    }
+  };
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: 'information-circle' },
@@ -1845,11 +2167,20 @@ export default function RestaurantDetailScreen() {
         <View style={styles.ratingSummary}>
           <Ionicons name="star" size={20} color={Colors[colorScheme ?? 'light'].accent} />
           <Text style={[styles.ratingText, { color: Colors[colorScheme ?? 'light'].text }]}>
-            {restaurant.rating} ({restaurant.reviews.length} reviews)
+            {restaurant.rating} ({restaurantReviews.length} reviews)
           </Text>
         </View>
+        <TouchableOpacity
+          style={[styles.addReviewButton, { backgroundColor: Colors[colorScheme ?? 'light'].primary }]}
+          onPress={() => setShowReviewModal(true)}
+        >
+          <Ionicons name="add" size={16} color={Colors[colorScheme ?? 'light'].background} />
+          <Text style={[styles.addReviewButtonText, { color: Colors[colorScheme ?? 'light'].background }]}>
+            Create Review
+          </Text>
+        </TouchableOpacity>
       </View>
-      {restaurant.reviews.map((review) => (
+      {restaurantReviews.map((review) => (
         <View key={review.id} style={[styles.reviewItem, { backgroundColor: Colors[colorScheme ?? 'light'].surface }]}>
           <View style={styles.reviewHeader}>
             <Text style={[styles.reviewUser, { color: Colors[colorScheme ?? 'light'].text }]}>
@@ -1869,9 +2200,7 @@ export default function RestaurantDetailScreen() {
           <Text style={[styles.reviewComment, { color: Colors[colorScheme ?? 'light'].text }]}>
             {review.comment}
           </Text>
-          <Text style={[styles.reviewDate, { color: Colors[colorScheme ?? 'light'].icon }]}>
-            {review.date}
-          </Text>
+                      <LiveTimestamp timestamp={review.date} colorScheme={colorScheme ?? 'light'} />
         </View>
       ))}
     </View>
@@ -1890,11 +2219,11 @@ export default function RestaurantDetailScreen() {
             color={Colors[colorScheme ?? 'light'].text} 
           />
         </TouchableOpacity>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={handleFavoriteToggle}>
           <Ionicons 
-            name="heart-outline" 
+            name={isRestaurantFavorite ? "heart" : "heart-outline"} 
             size={24} 
-            color={Colors[colorScheme ?? 'light'].text} 
+            color={isRestaurantFavorite ? Colors[colorScheme ?? 'light'].error : Colors[colorScheme ?? 'light'].text} 
           />
         </TouchableOpacity>
       </View>
@@ -1990,6 +2319,99 @@ export default function RestaurantDetailScreen() {
           </Text>
         </TouchableOpacity>
       </View>
+
+      {/* Review Modal */}
+      <Modal
+        visible={showReviewModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowReviewModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: Colors[colorScheme ?? 'light'].text }]}>
+                Write a Review
+              </Text>
+              <TouchableOpacity
+                onPress={() => setShowReviewModal(false)}
+                style={styles.closeButton}
+              >
+                <Ionicons name="close" size={24} color={Colors[colorScheme ?? 'light'].text} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.formContainer}>
+              {/* Rating Section */}
+              <View style={styles.inputGroup}>
+                <Text style={[styles.inputLabel, { color: Colors[colorScheme ?? 'light'].text }]}>
+                  Rating
+                </Text>
+                <View style={styles.starContainer}>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <TouchableOpacity
+                      key={star}
+                      onPress={() => handleStarPress(star)}
+                      style={styles.starButton}
+                    >
+                      <Ionicons
+                        name={star <= newReview.rating ? 'star' : 'star-outline'}
+                        size={32}
+                        color={star <= newReview.rating ? Colors[colorScheme ?? 'light'].accent : Colors[colorScheme ?? 'light'].icon}
+                      />
+                    </TouchableOpacity>
+                  ))}
+                </View>
+                {newReview.rating > 0 && (
+                  <Text style={[styles.ratingText, { color: Colors[colorScheme ?? 'light'].text }]}>
+                    {newReview.rating} out of 5 stars
+                  </Text>
+                )}
+              </View>
+
+              {/* Name Input */}
+              <View style={styles.inputGroup}>
+                <Text style={[styles.inputLabel, { color: Colors[colorScheme ?? 'light'].text }]}>
+                  Your Name
+                </Text>
+                <TextInput
+                  style={[styles.textInput, { backgroundColor: Colors[colorScheme ?? 'light'].surface, color: Colors[colorScheme ?? 'light'].text }]}
+                  placeholder="Enter your name"
+                  placeholderTextColor={Colors[colorScheme ?? 'light'].icon}
+                  value={newReview.name}
+                  onChangeText={(text) => setNewReview(prev => ({ ...prev, name: text }))}
+                />
+              </View>
+
+              {/* Review Message */}
+              <View style={styles.inputGroup}>
+                <Text style={[styles.inputLabel, { color: Colors[colorScheme ?? 'light'].text }]}>
+                  Review
+                </Text>
+                <TextInput
+                  style={[styles.textArea, { backgroundColor: Colors[colorScheme ?? 'light'].surface, color: Colors[colorScheme ?? 'light'].text }]}
+                  placeholder="Share your experience..."
+                  placeholderTextColor={Colors[colorScheme ?? 'light'].icon}
+                  value={newReview.comment}
+                  onChangeText={(text) => setNewReview(prev => ({ ...prev, comment: text }))}
+                  multiline
+                  numberOfLines={4}
+                  textAlignVertical="top"
+                />
+              </View>
+
+              <TouchableOpacity
+                style={[styles.submitButton, { backgroundColor: Colors[colorScheme ?? 'light'].primary }]}
+                onPress={handleAddReview}
+              >
+                <Text style={[styles.submitButtonText, { color: Colors[colorScheme ?? 'light'].background }]}>
+                  Submit Review
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -2249,5 +2671,94 @@ const styles = StyleSheet.create({
   tagText: {
     fontSize: 10,
     fontWeight: '600',
+  },
+  // Review Button Styles
+  addReviewButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    marginTop: 8,
+  },
+  addReviewButtonText: {
+    fontSize: 14,
+    fontWeight: '600',
+    marginLeft: 4,
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '90%',
+    maxHeight: '80%',
+    borderRadius: 16,
+    padding: 20,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 5,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 24,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  closeButton: {
+    padding: 4,
+  },
+  formContainer: {
+    gap: 20,
+  },
+  inputGroup: {
+    gap: 8,
+  },
+  inputLabel: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  starContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 8,
+  },
+  starButton: {
+    padding: 4,
+  },
+  textInput: {
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 16,
+  },
+  textArea: {
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    fontSize: 16,
+    height: 100,
+  },
+  submitButton: {
+    paddingVertical: 16,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  submitButtonText: {
+    fontSize: 16,
+    fontWeight: 'bold',
   },
 }); 

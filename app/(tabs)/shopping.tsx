@@ -18,6 +18,12 @@ export default function ShoppingScreen() {
   const colorScheme = useColorScheme();
 
   const [searchQuery, setSearchQuery] = useState('');
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [activeFilters, setActiveFilters] = useState({
+    concourse: '',
+    category: '',
+    rating: 0,
+  });
 
 
 
@@ -258,6 +264,45 @@ export default function ShoppingScreen() {
     },
   ];
 
+  // Get unique values for filters
+  const concourses = [...new Set(shops.map(s => s.location))];
+  const categories = [...new Set(shops.map(s => s.category))];
+
+  // Filter shops based on search and filters
+  const filteredShops = shops.filter(shop => {
+    // Search filter
+    const matchesSearch = searchQuery === '' || 
+      shop.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      shop.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      shop.category.toLowerCase().includes(searchQuery.toLowerCase());
+
+    // Concourse filter
+    const matchesConcourse = activeFilters.concourse === '' || 
+      shop.location === activeFilters.concourse;
+
+    // Category filter
+    const matchesCategory = activeFilters.category === '' || 
+      shop.category === activeFilters.category;
+
+    // Rating filter
+    const matchesRating = activeFilters.rating === 0 || 
+      shop.rating >= activeFilters.rating;
+
+    return matchesSearch && matchesConcourse && matchesCategory && matchesRating;
+  });
+
+  const clearFilters = () => {
+    setActiveFilters({
+      concourse: '',
+      category: '',
+      rating: 0,
+    });
+  };
+
+  const hasActiveFilters = activeFilters.concourse !== '' || 
+    activeFilters.category !== '' || 
+    activeFilters.rating > 0;
+
   const handleShopPress = (shop: any) => {
     router.push({
       pathname: '/shop-detail',
@@ -281,7 +326,7 @@ export default function ShoppingScreen() {
         <Text style={[styles.headerTitle, { color: Colors[colorScheme ?? 'light'].text }]}>
           Shopping
         </Text>
-        <TouchableOpacity>
+        <TouchableOpacity onPress={() => setShowFilterModal(true)}>
           <Ionicons 
             name="filter" 
             size={24} 
@@ -309,9 +354,65 @@ export default function ShoppingScreen() {
 
 
 
+      {/* Active Filters Display */}
+      {hasActiveFilters && (
+        <View style={styles.activeFiltersContainer}>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+            {activeFilters.concourse && (
+              <View style={[styles.filterChip, { backgroundColor: Colors[colorScheme ?? 'light'].accent }]}>
+                <Text style={[styles.filterChipText, { color: Colors[colorScheme ?? 'light'].primary }]}>
+                  {activeFilters.concourse}
+                </Text>
+                <TouchableOpacity 
+                  onPress={() => setActiveFilters(prev => ({ ...prev, concourse: '' }))}
+                  style={styles.filterChipClose}
+                >
+                  <Ionicons name="close" size={14} color={Colors[colorScheme ?? 'light'].primary} />
+                </TouchableOpacity>
+              </View>
+            )}
+            {activeFilters.category && (
+              <View style={[styles.filterChip, { backgroundColor: Colors[colorScheme ?? 'light'].accent }]}>
+                <Text style={[styles.filterChipText, { color: Colors[colorScheme ?? 'light'].primary }]}>
+                  {activeFilters.category}
+                </Text>
+                <TouchableOpacity 
+                  onPress={() => setActiveFilters(prev => ({ ...prev, category: '' }))}
+                  style={styles.filterChipClose}
+                >
+                  <Ionicons name="close" size={14} color={Colors[colorScheme ?? 'light'].primary} />
+                </TouchableOpacity>
+              </View>
+            )}
+            {activeFilters.rating > 0 && (
+              <View style={[styles.filterChip, { backgroundColor: Colors[colorScheme ?? 'light'].accent }]}>
+                <Text style={[styles.filterChipText, { color: Colors[colorScheme ?? 'light'].primary }]}>
+                  {activeFilters.rating}+ Stars
+                </Text>
+                <TouchableOpacity 
+                  onPress={() => setActiveFilters(prev => ({ ...prev, rating: 0 }))}
+                  style={styles.filterChipClose}
+                >
+                  <Ionicons name="close" size={14} color={Colors[colorScheme ?? 'light'].primary} />
+                </TouchableOpacity>
+              </View>
+            )}
+            <TouchableOpacity 
+              style={[styles.clearFiltersButton, { backgroundColor: Colors[colorScheme ?? 'light'].surface }]}
+              onPress={clearFilters}
+            >
+              <Text style={[styles.clearFiltersText, { color: Colors[colorScheme ?? 'light'].text }]}>
+                Clear All
+              </Text>
+            </TouchableOpacity>
+          </ScrollView>
+        </View>
+      )}
+
       {/* Shop List */}
       <ScrollView style={styles.shopList} showsVerticalScrollIndicator={false}>
-        {shops.map((shop) => (
+        {filteredShops.length > 0 ? (
+          filteredShops.map((shop) => (
           <TouchableOpacity
             key={shop.id}
             style={[styles.shopCard, { backgroundColor: Colors[colorScheme ?? 'light'].surface }]}
@@ -400,8 +501,197 @@ export default function ShoppingScreen() {
               </Text>
             </TouchableOpacity>
           </TouchableOpacity>
-        ))}
+        ))
+        ) : (
+          <View style={styles.noResultsContainer}>
+            <Ionicons 
+              name="search-outline" 
+              size={48} 
+              color={Colors[colorScheme ?? 'light'].icon} 
+            />
+            <Text style={[styles.noResultsTitle, { color: Colors[colorScheme ?? 'light'].text }]}>
+              No shops found
+            </Text>
+            <Text style={[styles.noResultsSubtitle, { color: Colors[colorScheme ?? 'light'].icon }]}>
+              {searchQuery ? `No shops match "${searchQuery}"` : 'Try adjusting your filters'}
+            </Text>
+            {(searchQuery || hasActiveFilters) && (
+              <TouchableOpacity 
+                style={[styles.clearAllButton, { backgroundColor: Colors[colorScheme ?? 'light'].primary }]}
+                onPress={() => {
+                  setSearchQuery('');
+                  clearFilters();
+                }}
+              >
+                <Text style={[styles.clearAllButtonText, { color: Colors[colorScheme ?? 'light'].background }]}>
+                  Clear Search & Filters
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        )}
       </ScrollView>
+
+      {/* Filter Modal */}
+      {showFilterModal && (
+        <View style={styles.modalOverlay}>
+          <View style={[styles.filterModal, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
+            <View style={styles.filterModalHeader}>
+              <Text style={[styles.filterModalTitle, { color: Colors[colorScheme ?? 'light'].text }]}>
+                Filter Shops
+              </Text>
+              <TouchableOpacity onPress={() => setShowFilterModal(false)}>
+                <Ionicons 
+                  name="close" 
+                  size={24} 
+                  color={Colors[colorScheme ?? 'light'].text} 
+                />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.filterModalContent}>
+              {/* Concourse Filter */}
+              <View style={styles.filterSection}>
+                <Text style={[styles.filterSectionTitle, { color: Colors[colorScheme ?? 'light'].text }]}>
+                  Concourse
+                </Text>
+                <View style={styles.filterOptions}>
+                  <TouchableOpacity
+                    style={[
+                      styles.filterOption,
+                      activeFilters.concourse === '' && { backgroundColor: Colors[colorScheme ?? 'light'].primary }
+                    ]}
+                    onPress={() => setActiveFilters(prev => ({ ...prev, concourse: '' }))}
+                  >
+                    <Text style={[
+                      styles.filterOptionText,
+                      { color: activeFilters.concourse === '' ? Colors[colorScheme ?? 'light'].background : Colors[colorScheme ?? 'light'].text }
+                    ]}>
+                      All Concourses
+                    </Text>
+                  </TouchableOpacity>
+                  {concourses.map((concourse) => (
+                    <TouchableOpacity
+                      key={concourse}
+                      style={[
+                        styles.filterOption,
+                        activeFilters.concourse === concourse && { backgroundColor: Colors[colorScheme ?? 'light'].primary }
+                      ]}
+                      onPress={() => setActiveFilters(prev => ({ ...prev, concourse }))}
+                    >
+                      <Text style={[
+                        styles.filterOptionText,
+                        { color: activeFilters.concourse === concourse ? Colors[colorScheme ?? 'light'].background : Colors[colorScheme ?? 'light'].text }
+                      ]}>
+                        {concourse}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Category Filter */}
+              <View style={styles.filterSection}>
+                <Text style={[styles.filterSectionTitle, { color: Colors[colorScheme ?? 'light'].text }]}>
+                  Category
+                </Text>
+                <View style={styles.filterOptions}>
+                  <TouchableOpacity
+                    style={[
+                      styles.filterOption,
+                      activeFilters.category === '' && { backgroundColor: Colors[colorScheme ?? 'light'].primary }
+                    ]}
+                    onPress={() => setActiveFilters(prev => ({ ...prev, category: '' }))}
+                  >
+                    <Text style={[
+                      styles.filterOptionText,
+                      { color: activeFilters.category === '' ? Colors[colorScheme ?? 'light'].background : Colors[colorScheme ?? 'light'].text }
+                    ]}>
+                      All Categories
+                    </Text>
+                  </TouchableOpacity>
+                  {categories.map((category) => (
+                    <TouchableOpacity
+                      key={category}
+                      style={[
+                        styles.filterOption,
+                        activeFilters.category === category && { backgroundColor: Colors[colorScheme ?? 'light'].primary }
+                      ]}
+                      onPress={() => setActiveFilters(prev => ({ ...prev, category }))}
+                    >
+                      <Text style={[
+                        styles.filterOptionText,
+                        { color: activeFilters.category === category ? Colors[colorScheme ?? 'light'].background : Colors[colorScheme ?? 'light'].text }
+                      ]}>
+                        {category}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              {/* Rating Filter */}
+              <View style={styles.filterSection}>
+                <Text style={[styles.filterSectionTitle, { color: Colors[colorScheme ?? 'light'].text }]}>
+                  Minimum Rating
+                </Text>
+                <View style={styles.filterOptions}>
+                  <TouchableOpacity
+                    style={[
+                      styles.filterOption,
+                      activeFilters.rating === 0 && { backgroundColor: Colors[colorScheme ?? 'light'].primary }
+                    ]}
+                    onPress={() => setActiveFilters(prev => ({ ...prev, rating: 0 }))}
+                  >
+                    <Text style={[
+                      styles.filterOptionText,
+                      { color: activeFilters.rating === 0 ? Colors[colorScheme ?? 'light'].background : Colors[colorScheme ?? 'light'].text }
+                    ]}>
+                      Any Rating
+                    </Text>
+                  </TouchableOpacity>
+                  {[4.5, 4.0, 3.5, 3.0].map((rating) => (
+                    <TouchableOpacity
+                      key={rating}
+                      style={[
+                        styles.filterOption,
+                        activeFilters.rating === rating && { backgroundColor: Colors[colorScheme ?? 'light'].primary }
+                      ]}
+                      onPress={() => setActiveFilters(prev => ({ ...prev, rating }))}
+                    >
+                      <Text style={[
+                        styles.filterOptionText,
+                        { color: activeFilters.rating === rating ? Colors[colorScheme ?? 'light'].background : Colors[colorScheme ?? 'light'].text }
+                      ]}>
+                        {rating}+ Stars
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+            </ScrollView>
+
+            <View style={styles.filterModalFooter}>
+              <TouchableOpacity
+                style={[styles.filterButton, { backgroundColor: Colors[colorScheme ?? 'light'].surface }]}
+                onPress={clearFilters}
+              >
+                <Text style={[styles.filterButtonText, { color: Colors[colorScheme ?? 'light'].text }]}>
+                  Clear All
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.filterButton, { backgroundColor: Colors[colorScheme ?? 'light'].primary }]}
+                onPress={() => setShowFilterModal(false)}
+              >
+                <Text style={[styles.filterButtonText, { color: Colors[colorScheme ?? 'light'].background }]}>
+                  Apply Filters
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      )}
     </SafeAreaView>
   );
 }
@@ -565,6 +855,152 @@ const styles = StyleSheet.create({
   },
   actionButtonText: {
     fontSize: 14,
+    fontWeight: '600',
+  },
+  // Filter styles
+  activeFiltersContainer: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+  },
+  filterChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginRight: 8,
+  },
+  filterChipText: {
+    fontSize: 12,
+    fontWeight: '600',
+    marginRight: 4,
+  },
+  filterChipClose: {
+    padding: 2,
+  },
+  clearFiltersButton: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    marginRight: 8,
+  },
+  clearFiltersText: {
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  // No results styles
+  noResultsContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 40,
+    paddingVertical: 60,
+  },
+  noResultsTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+    marginTop: 16,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  noResultsSubtitle: {
+    fontSize: 16,
+    textAlign: 'center',
+    marginBottom: 24,
+    lineHeight: 22,
+  },
+  clearAllButton: {
+    paddingHorizontal: 20,
+    paddingVertical: 12,
+    borderRadius: 12,
+  },
+  clearAllButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  // Modal styles
+  modalOverlay: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  filterModal: {
+    width: '90%',
+    maxHeight: '80%',
+    borderRadius: 16,
+    shadowColor: '#000',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.25,
+    shadowRadius: 8,
+    elevation: 8,
+  },
+  filterModalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  filterModalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+  },
+  filterModalContent: {
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+  },
+  filterSection: {
+    marginBottom: 24,
+  },
+  filterSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    marginBottom: 12,
+  },
+  filterOptions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+  },
+  filterOption: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: 'rgba(0, 0, 0, 0.1)',
+  },
+  filterOptionText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  filterModalFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0, 0, 0, 0.1)',
+    gap: 12,
+  },
+  filterButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  filterButtonText: {
+    fontSize: 16,
     fontWeight: '600',
   },
 }); 
