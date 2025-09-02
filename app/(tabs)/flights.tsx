@@ -14,20 +14,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
 import { useColorScheme } from '../../hooks/useColorScheme';
 import { useFlights } from '../../contexts/FlightsContext';
-import * as amadeusTracker from '../../services/amadeusTracker';
-
-interface FlightTrackingData {
-  flightNumber: string;
-  status: string;
-  departure: {
-    airport: string;
-    time: string;
-  };
-  arrival: {
-    airport: string;
-    time: string;
-  };
-}
+import amadeusTracker from '../../services/amadeusTracker';
+import { FlightTrackingData } from '../../types/FlightTracking';
 
 export default function FlightsScreen() {
   const colorScheme = useColorScheme();
@@ -53,10 +41,14 @@ export default function FlightsScreen() {
     setTrackingFlight(null);
 
     try {
+      console.log('Attempting to track flight:', airlineCode.trim().toUpperCase(), flightNumber.trim());
+      
       const flightData = await amadeusTracker.trackFlightWithAirports(
         airlineCode.trim().toUpperCase(),
         flightNumber.trim()
       );
+      
+      console.log('Flight tracking response:', flightData);
       
       if (flightData) {
         setTrackingFlight(flightData);
@@ -65,8 +57,10 @@ export default function FlightsScreen() {
         setTrackingError('Flight not found. Please check the airline code and flight number.');
       }
     } catch (error) {
-      setTrackingError(error instanceof Error ? error.message : 'Failed to track flight');
-      Alert.alert('Error', 'Failed to track flight. Please try again.');
+      console.error('Flight tracking error details:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setTrackingError(`Failed to track flight: ${errorMessage}`);
+      Alert.alert('Error', `Failed to track flight: ${errorMessage}`);
     } finally {
       setIsTracking(false);
     }

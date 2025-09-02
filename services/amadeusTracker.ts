@@ -217,3 +217,16 @@ class AmadeusFlightTracker {
     }
   }
 }
+
+// Create and export a singleton instance
+const amadeusTracker = new AmadeusFlightTracker();
+
+export default amadeusTracker;
+export { AmadeusFlightTracker };
+
+// Export convenience functions
+export const authenticate = () => amadeusTracker.authenticate();
+export const trackFlight = (airlineCode: string, flightNumber: string) => 
+  amadeusTracker.trackFlight(airlineCode, flightNumber);
+export const trackFlightWithAirports = (airlineCode: string, flightNumber: string) => 
+  amadeusTracker.trackFlightWithAirports(airlineCode, flightNumber);
