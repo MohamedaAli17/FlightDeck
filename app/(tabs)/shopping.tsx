@@ -13,21 +13,15 @@ import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
 import { useColorScheme } from '../../hooks/useColorScheme';
 import { router } from 'expo-router';
+import { useContent } from '../../contexts/ContentContext';
+import { LocalShop } from '../../services/localShopService';
 
 export default function ShoppingScreen() {
   const colorScheme = useColorScheme();
-
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showFilterModal, setShowFilterModal] = useState(false);
-  const [activeFilters, setActiveFilters] = useState({
-    concourse: '',
-    category: '',
-    rating: 0,
-  });
-
-
-
-  const shops = [
+  const { shops } = useContent();
+  
+  // Fallback shops data (in case context is not available)
+  const fallbackShops: LocalShop[] = [
     {
       id: 1,
       name: 'Atlanta News & Gifts',
@@ -40,6 +34,7 @@ export default function ShoppingScreen() {
       hours: '5:00 AM - 11:00 PM',
       location: 'Concourse A',
       offers: ['10% off Atlanta merchandise'],
+      active: true,
     },
     {
       id: 2,
@@ -53,6 +48,7 @@ export default function ShoppingScreen() {
       hours: '6:00 AM - 10:00 PM',
       location: 'Concourse A',
       offers: ['Free CNN mug with $25 purchase'],
+      active: true,
     },
     {
       id: 3,
@@ -66,6 +62,7 @@ export default function ShoppingScreen() {
       hours: '6:00 AM - 10:00 PM',
       location: 'Concourse B',
       offers: ['Free makeup consultation'],
+      active: true,
     },
     {
       id: 4,
@@ -79,6 +76,7 @@ export default function ShoppingScreen() {
       hours: '5:00 AM - 11:00 PM',
       location: 'Concourse B',
       offers: ['Price match guarantee', 'Free phone setup'],
+      active: true,
     },
     {
       id: 5,
@@ -92,6 +90,7 @@ export default function ShoppingScreen() {
       hours: '6:00 AM - 10:30 PM',
       location: 'Concourse C',
       offers: ['Free product demos'],
+      active: true,
     },
     {
       id: 6,
@@ -105,6 +104,7 @@ export default function ShoppingScreen() {
       hours: '6:00 AM - 10:00 PM',
       location: 'Concourse D',
       offers: ['Buy one get one 50% off'],
+      active: true,
     },
     {
       id: 7,
@@ -118,6 +118,7 @@ export default function ShoppingScreen() {
       hours: '6:00 AM - 9:30 PM',
       location: 'Concourse E',
       offers: ['Free shoe shine service'],
+      active: true,
     },
     {
       id: 8,
@@ -131,6 +132,7 @@ export default function ShoppingScreen() {
       hours: '6:00 AM - 10:00 PM',
       location: 'Concourse F',
       offers: ['Complimentary gift wrapping'],
+      active: true,
     },
     {
       id: 9,
@@ -144,6 +146,7 @@ export default function ShoppingScreen() {
       hours: '6:00 AM - 10:00 PM',
       location: 'Concourse T',
       offers: ['Free tote with $75 purchase'],
+      active: true,
     },
     {
       id: 10,
@@ -157,6 +160,7 @@ export default function ShoppingScreen() {
       hours: '5:30 AM - 10:30 PM',
       location: 'Concourse B',
       offers: ['Lifetime repair program'],
+      active: true,
     },
     {
       id: 11,
@@ -170,6 +174,7 @@ export default function ShoppingScreen() {
       hours: '6:00 AM - 10:00 PM',
       location: 'Concourse C',
       offers: ['Free jewelry cleaning'],
+      active: true,
     },
     {
       id: 12,
@@ -183,6 +188,7 @@ export default function ShoppingScreen() {
       hours: '5:00 AM - 11:30 PM',
       location: 'Multiple Locations',
       offers: ['Buy 2 drinks get 1 free snack'],
+      active: true,
     },
     {
       id: 13,
@@ -196,6 +202,7 @@ export default function ShoppingScreen() {
       hours: '5:00 AM - 11:00 PM',
       location: 'International Terminal',
       offers: ['Tax-free shopping for international travelers'],
+      active: true,
     },
     {
       id: 14,
@@ -209,6 +216,7 @@ export default function ShoppingScreen() {
       hours: '6:00 AM - 9:30 PM',
       location: 'Concourse E',
       offers: ['Student discount available'],
+      active: true,
     },
     {
       id: 15,
@@ -222,6 +230,7 @@ export default function ShoppingScreen() {
       hours: '6:00 AM - 10:00 PM',
       location: 'Concourse A',
       offers: ['Free phone diagnosis'],
+      active: true,
     },
     {
       id: 16,
@@ -235,6 +244,7 @@ export default function ShoppingScreen() {
       hours: '6:00 AM - 10:00 PM',
       location: 'Concourse D',
       offers: ['Exclusive airport jerseys'],
+      active: true,
     },
     {
       id: 17,
@@ -248,6 +258,7 @@ export default function ShoppingScreen() {
       hours: '6:00 AM - 10:00 PM',
       location: 'Concourse B',
       offers: ['Try before you fly fitting service'],
+      active: true,
     },
     {
       id: 18,
@@ -261,15 +272,29 @@ export default function ShoppingScreen() {
       hours: '5:30 AM - 11:00 PM',
       location: 'Concourse C',
       offers: ['Listen before you buy'],
+      active: true,
     },
   ];
 
+  // Filter to only show active shops, use fallback if context is empty
+  const activeShops = shops.length > 0 
+    ? shops.filter(shop => shop.active)
+    : fallbackShops.filter(shop => shop.active);
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [activeFilters, setActiveFilters] = useState({
+    concourse: '',
+    category: '',
+    rating: 0,
+  });
+
   // Get unique values for filters
-  const concourses = [...new Set(shops.map(s => s.location))];
-  const categories = [...new Set(shops.map(s => s.category))];
+  const concourses = [...new Set(activeShops.map(s => s.location))];
+  const categories = [...new Set(activeShops.map(s => s.category))];
 
   // Filter shops based on search and filters
-  const filteredShops = shops.filter(shop => {
+  const filteredShops = activeShops.filter(shop => {
     // Search filter
     const matchesSearch = searchQuery === '' || 
       shop.name.toLowerCase().includes(searchQuery.toLowerCase()) ||

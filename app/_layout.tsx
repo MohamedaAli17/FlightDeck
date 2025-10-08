@@ -9,6 +9,8 @@ import { AuthProvider } from '../contexts/AuthContext';
 import { FavoritesProvider } from '../contexts/FavoritesContext';
 import { ReviewsProvider } from '../contexts/ReviewsContext';
 import { FlightsProvider } from '../contexts/FlightsContext';
+import { ContentProvider } from '../contexts/ContentContext';
+import { initialRestaurants, initialShops } from '../data/initialData';
 
 export default function RootLayout() {
   const colorScheme = useColorScheme();
@@ -26,14 +28,16 @@ export default function RootLayout() {
       <FavoritesProvider>
         <ReviewsProvider>
           <FlightsProvider>
-            <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-                          <Stack>
-              <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-              <Stack.Screen name="auth" options={{ headerShown: false }} />
-              <Stack.Screen name="+not-found" />
-            </Stack>
-              <StatusBar style="auto" />
-            </ThemeProvider>
+            <ContentProvider initialRestaurants={initialRestaurants} initialShops={initialShops}>
+              <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+                <Stack>
+                  <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+                  <Stack.Screen name="auth" options={{ headerShown: false }} />
+                  <Stack.Screen name="+not-found" />
+                </Stack>
+                <StatusBar style="auto" />
+              </ThemeProvider>
+            </ContentProvider>
           </FlightsProvider>
         </ReviewsProvider>
       </FavoritesProvider>

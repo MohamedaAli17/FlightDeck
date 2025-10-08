@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -6,10 +6,12 @@ import {
   TouchableOpacity,
   Modal,
   SafeAreaView,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../constants/Colors';
 import { useColorScheme } from '../hooks/useColorScheme';
+import { useAuth } from '../contexts/AuthContext';
 import { router } from 'expo-router';
 
 interface AuthModalProps {
@@ -19,6 +21,8 @@ interface AuthModalProps {
 
 export default function AuthModal({ visible, onClose }: AuthModalProps) {
   const colorScheme = useColorScheme();
+  const { signInWithGoogle } = useAuth();
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const handleSignUp = () => {
     onClose();
@@ -28,6 +32,18 @@ export default function AuthModal({ visible, onClose }: AuthModalProps) {
   const handleSignIn = () => {
     onClose();
     router.push('/auth/signin' as any);
+  };
+
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    try {
+      await signInWithGoogle();
+      onClose();
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
+    } finally {
+      setGoogleLoading(false);
+    }
   };
 
   return (
@@ -85,6 +101,36 @@ export default function AuthModal({ visible, onClose }: AuthModalProps) {
               >
                 <Text style={[styles.buttonText, { color: Colors[colorScheme ?? 'light'].primary }]}>
                   Sign In
+                </Text>
+              </TouchableOpacity>
+
+              {/* Divider */}
+              <View style={styles.dividerContainer}>
+                <View style={[styles.dividerLine, { backgroundColor: Colors[colorScheme ?? 'light'].border }]} />
+                <Text style={[styles.dividerText, { color: Colors[colorScheme ?? 'light'].icon }]}>OR</Text>
+                <View style={[styles.dividerLine, { backgroundColor: Colors[colorScheme ?? 'light'].border }]} />
+              </View>
+
+              {/* Google Sign-In Button */}
+              <TouchableOpacity 
+                style={[
+                  styles.googleButton, 
+                  { 
+                    backgroundColor: Colors[colorScheme ?? 'light'].surface,
+                    borderColor: Colors[colorScheme ?? 'light'].border
+                  }
+                ]}
+                onPress={handleGoogleSignIn}
+                disabled={googleLoading}
+              >
+                <Ionicons 
+                  name="logo-google" 
+                  size={20} 
+                  color="#DB4437" 
+                  style={styles.googleIcon}
+                />
+                <Text style={[styles.googleButtonText, { color: Colors[colorScheme ?? 'light'].text }]}>
+                  {googleLoading ? 'Signing In...' : 'Continue with Google'}
                 </Text>
               </TouchableOpacity>
             </View>
@@ -164,6 +210,35 @@ const styles = StyleSheet.create({
     borderWidth: 2,
   },
   buttonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 16,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+  },
+  dividerText: {
+    marginHorizontal: 16,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+  },
+  googleIcon: {
+    marginRight: 12,
+  },
+  googleButtonText: {
     fontSize: 16,
     fontWeight: '600',
   },

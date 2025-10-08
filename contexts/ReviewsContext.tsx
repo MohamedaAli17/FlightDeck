@@ -94,8 +94,8 @@ export const ReviewsProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const cleanupInvalidReviews = async () => {
     const cleanedReviews: RestaurantReviews = {};
     
-    for (const [restaurantId, reviews] of Object.entries(reviews)) {
-      const validReviews = reviews.filter(review => !isNaN(new Date(review.date).getTime()));
+    for (const [restaurantId, restaurantReviews] of Object.entries(reviews)) {
+      const validReviews = restaurantReviews.filter((review: Review) => !isNaN(new Date(review.date).getTime()));
       if (validReviews.length > 0) {
         cleanedReviews[parseInt(restaurantId)] = validReviews;
       }

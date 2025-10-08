@@ -10,6 +10,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  Modal,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
@@ -19,11 +20,14 @@ import { router } from 'expo-router';
 
 export default function SignInScreen() {
   const colorScheme = useColorScheme();
-  const { signIn } = useAuth();
+  const { signIn, signInWithGoogle, sendPasswordReset } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
 
   const handleSignIn = async () => {
     if (!email || !password) {
@@ -39,6 +43,44 @@ export default function SignInScreen() {
       Alert.alert('Error', error.message);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleGoogleSignIn = async () => {
+    setGoogleLoading(true);
+    try {
+      await signInWithGoogle();
+      router.replace('/(tabs)');
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!email) {
+      Alert.alert('Error', 'Please enter your email address first');
+      return;
+    }
+
+    setResetLoading(true);
+    try {
+      await sendPasswordReset(email);
+      Alert.alert(
+        'Password Reset Email Sent',
+        'Please check your email for instructions to reset your password.',
+        [
+          {
+            text: 'OK',
+            onPress: () => setShowForgotPassword(false)
+          }
+        ]
+      );
+    } catch (error: any) {
+      Alert.alert('Error', error.message);
+    } finally {
+      setResetLoading(false);
     }
   };
 
@@ -139,6 +181,46 @@ export default function SignInScreen() {
                 {loading ? 'Signing In...' : 'Sign In'}
               </Text>
             </TouchableOpacity>
+
+            {/* Divider */}
+            <View style={styles.dividerContainer}>
+              <View style={[styles.dividerLine, { backgroundColor: Colors[colorScheme ?? 'light'].border }]} />
+              <Text style={[styles.dividerText, { color: Colors[colorScheme ?? 'light'].icon }]}>OR</Text>
+              <View style={[styles.dividerLine, { backgroundColor: Colors[colorScheme ?? 'light'].border }]} />
+            </View>
+
+            {/* Google Sign-In Button */}
+            <TouchableOpacity 
+              style={[
+                styles.googleButton, 
+                { 
+                  backgroundColor: Colors[colorScheme ?? 'light'].surface,
+                  borderColor: Colors[colorScheme ?? 'light'].border
+                }
+              ]}
+              onPress={handleGoogleSignIn}
+              disabled={googleLoading}
+            >
+              <Ionicons 
+                name="logo-google" 
+                size={20} 
+                color="#DB4437" 
+                style={styles.googleIcon}
+              />
+              <Text style={[styles.googleButtonText, { color: Colors[colorScheme ?? 'light'].text }]}>
+                {googleLoading ? 'Signing In...' : 'Continue with Google'}
+              </Text>
+            </TouchableOpacity>
+
+            {/* Forgot Password */}
+            <TouchableOpacity 
+              style={styles.forgotPasswordContainer}
+              onPress={() => setShowForgotPassword(true)}
+            >
+              <Text style={[styles.forgotPasswordText, { color: Colors[colorScheme ?? 'light'].primary }]}>
+                Forgot Password?
+              </Text>
+            </TouchableOpacity>
           </View>
 
           {/* Sign Up Link */}
@@ -154,6 +236,81 @@ export default function SignInScreen() {
           </View>
         </View>
       </KeyboardAvoidingView>
+
+      {/* Forgot Password Modal */}
+      <Modal
+        visible={showForgotPassword}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setShowForgotPassword(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={[styles.modalContent, { backgroundColor: Colors[colorScheme ?? 'light'].background }]}>
+            <View style={styles.modalHeader}>
+              <Text style={[styles.modalTitle, { color: Colors[colorScheme ?? 'light'].text }]}>
+                Reset Password
+              </Text>
+              <TouchableOpacity onPress={() => setShowForgotPassword(false)}>
+                <Ionicons 
+                  name="close" 
+                  size={24} 
+                  color={Colors[colorScheme ?? 'light'].text} 
+                />
+              </TouchableOpacity>
+            </View>
+            
+            <Text style={[styles.modalDescription, { color: Colors[colorScheme ?? 'light'].icon }]}>
+              Enter your email address and we'll send you a link to reset your password.
+            </Text>
+
+            <View style={[styles.inputContainer, { backgroundColor: Colors[colorScheme ?? 'light'].surface }]}>
+              <Ionicons 
+                name="mail" 
+                size={20} 
+                color={Colors[colorScheme ?? 'light'].icon} 
+                style={styles.inputIcon}
+              />
+              <TextInput
+                style={[styles.input, { color: Colors[colorScheme ?? 'light'].text }]}
+                placeholder="Email"
+                placeholderTextColor={Colors[colorScheme ?? 'light'].icon}
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity 
+                style={[styles.modalButton, styles.cancelButton, { borderColor: Colors[colorScheme ?? 'light'].icon }]}
+                onPress={() => setShowForgotPassword(false)}
+              >
+                <Text style={[styles.cancelButtonText, { color: Colors[colorScheme ?? 'light'].icon }]}>
+                  Cancel
+                </Text>
+              </TouchableOpacity>
+              
+              <TouchableOpacity 
+                style={[
+                  styles.modalButton, 
+                  styles.resetButton, 
+                  { 
+                    backgroundColor: resetLoading ? Colors[colorScheme ?? 'light'].icon : Colors[colorScheme ?? 'light'].primary 
+                  }
+                ]}
+                onPress={handleForgotPassword}
+                disabled={resetLoading}
+              >
+                <Text style={[styles.resetButtonText, { color: Colors[colorScheme ?? 'light'].background }]}>
+                  {resetLoading ? 'Sending...' : 'Send Reset Email'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -238,6 +395,97 @@ const styles = StyleSheet.create({
     fontSize: 16,
   },
   signUpLink: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  forgotPasswordContainer: {
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  forgotPasswordText: {
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  modalContent: {
+    width: '90%',
+    borderRadius: 16,
+    padding: 20,
+    maxWidth: 400,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 20,
+    fontWeight: 'bold',
+  },
+  modalDescription: {
+    fontSize: 14,
+    marginBottom: 20,
+    lineHeight: 20,
+  },
+  modalButtons: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 20,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginHorizontal: 4,
+  },
+  cancelButton: {
+    borderWidth: 1,
+  },
+  resetButton: {
+    // backgroundColor will be set dynamically
+  },
+  cancelButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  resetButtonText: {
+    fontSize: 16,
+    fontWeight: '600',
+  },
+  dividerContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 20,
+  },
+  dividerLine: {
+    flex: 1,
+    height: 1,
+  },
+  dividerText: {
+    marginHorizontal: 16,
+    fontSize: 14,
+    fontWeight: '500',
+  },
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    marginBottom: 8,
+  },
+  googleIcon: {
+    marginRight: 12,
+  },
+  googleButtonText: {
     fontSize: 16,
     fontWeight: '600',
   },

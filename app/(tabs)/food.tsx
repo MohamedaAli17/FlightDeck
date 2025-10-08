@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,6 +9,7 @@ import {
   StatusBar,
   TextInput,
   Image,
+  Alert,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { Colors } from '../../constants/Colors';
@@ -17,24 +18,16 @@ import { useAuth } from '../../contexts/AuthContext';
 import { router } from 'expo-router';
 import RestaurantLogo from '../../components/RestaurantLogo';
 import AuthModal from '../../components/AuthModal';
+import { useContent } from '../../contexts/ContentContext';
+import { LocalRestaurant } from '../../services/localRestaurantService';
 
 export default function FoodScreen() {
   const colorScheme = useColorScheme();
   const { user } = useAuth();
-
-  const [searchQuery, setSearchQuery] = useState('');
-  const [showAuthModal, setShowAuthModal] = useState(false);
-  const [showFilterModal, setShowFilterModal] = useState(false);
-  const [activeFilters, setActiveFilters] = useState({
-    concourse: '',
-    cuisine: '',
-    price: '',
-    rating: 0,
-  });
-
-
-
-  const restaurants = [
+  const { restaurants } = useContent();
+  
+  // Fallback restaurants data (in case context is not available)
+  const fallbackRestaurants = [
     {
       id: 1,
       name: 'One Flew South',
@@ -49,321 +42,7 @@ export default function FoodScreen() {
       location: 'Concourse E',
       phone: '+1 (404) 555-0123',
       website: 'www.oneflewsouth.com',
-    },
-    {
-      id: 19,
-      name: 'Cat Cora\'s Kitchen',
-      description: 'Celebrity chef restaurant featuring Mediterranean-inspired cuisine',
-      rating: 4.3,
-      distance: '2 min walk',
-      price: '$$$',
-      cuisine: 'Mediterranean',
-      image: null,
-      recommended: true,
-      hours: '11:00 AM - 9:00 PM',
-      location: 'Concourse A',
-      phone: '+1 (404) 555-0141',
-      website: 'www.catcoraskitchen.com',
-    },
-    {
-      id: 20,
-      name: 'Gordon Biersch Brewery Restaurant',
-      description: 'Brewery restaurant with craft beers and American cuisine',
-      rating: 4.1,
-      distance: '3 min walk',
-      price: '$$',
-      cuisine: 'American',
-      image: null,
-      recommended: false,
-      hours: '11:00 AM - 10:00 PM',
-      location: 'Concourse A',
-      phone: '+1 (404) 555-0142',
-      website: 'www.gordonbiersch.com',
-    },
-    {
-      id: 21,
-      name: 'Low Country New Southern Cuisine',
-      description: 'Authentic Low Country Southern cooking with fresh ingredients',
-      rating: 4.4,
-      distance: '4 min walk',
-      price: '$$',
-      cuisine: 'Southern',
-      image: null,
-      recommended: true,
-      hours: '10:00 AM - 9:00 PM',
-      location: 'Concourse A',
-      phone: '+1 (404) 555-0143',
-      website: 'www.lowcountrycuisine.com',
-    },
-    {
-      id: 22,
-      name: 'Boardwalk Fresh Burgers & Fries',
-      description: 'Fresh, made-to-order burgers with hand-cut fries',
-      rating: 4.0,
-      distance: '2 min walk',
-      price: '$',
-      cuisine: 'American',
-      image: null,
-      recommended: false,
-      hours: '6:00 AM - 10:00 PM',
-      location: 'Concourse A',
-      phone: '+1 (404) 555-0144',
-      website: 'www.boardwalkfresh.com',
-    },
-    {
-      id: 23,
-      name: 'Varasano\'s Pizzeria',
-      description: 'Artisanal Neapolitan-style pizza with fresh ingredients',
-      rating: 4.2,
-      distance: '3 min walk',
-      price: '$$',
-      cuisine: 'Italian',
-      image: null,
-      recommended: false,
-      hours: '11:00 AM - 10:00 PM',
-      location: 'Concourse A',
-      phone: '+1 (404) 555-0145',
-      website: 'www.varasanos.com',
-    },
-    {
-      id: 24,
-      name: 'Shake Shack',
-      description: 'Premium fast food with burgers, hot dogs, and frozen custard',
-      rating: 4.3,
-      distance: '2 min walk',
-      price: '$',
-      cuisine: 'Fast Food',
-      image: null,
-      recommended: false,
-      hours: '6:00 AM - 11:00 PM',
-      location: 'Concourse A',
-      phone: '+1 (404) 555-0146',
-      website: 'www.shakeshack.com',
-    },
-    {
-      id: 25,
-      name: 'Boar\'s Head Deli & Kiosks',
-      description: 'Premium deli sandwiches and snacks with quality meats',
-      rating: 4.0,
-      distance: '1 min walk',
-      price: '$',
-      cuisine: 'Deli',
-      image: null,
-      recommended: false,
-      hours: '5:00 AM - 11:00 PM',
-      location: 'Concourse A',
-      phone: '+1 (404) 555-0147',
-      website: 'www.boarshead.com',
-    },
-    {
-      id: 26,
-      name: 'Great Wraps',
-      description: 'Fresh wraps and sandwiches made to order',
-      rating: 3.9,
-      distance: '2 min walk',
-      price: '$',
-      cuisine: 'Sandwiches',
-      image: null,
-      recommended: false,
-      hours: '6:00 AM - 10:00 PM',
-      location: 'Concourse A',
-      phone: '+1 (404) 555-0148',
-      website: 'www.greatwraps.com',
-    },
-    {
-      id: 27,
-      name: 'Atlanta Bread & Bar',
-      description: 'Fresh-baked breads, sandwiches, and coffee',
-      rating: 4.1,
-      distance: '2 min walk',
-      price: '$',
-      cuisine: 'Bakery',
-      image: null,
-      recommended: false,
-      hours: '5:00 AM - 10:00 PM',
-      location: 'Concourse A',
-      phone: '+1 (404) 555-0149',
-      website: 'www.atlantabread.com',
-    },
-    {
-      id: 28,
-      name: 'Freshëns',
-      description: 'Fresh, healthy food options with smoothies and wraps',
-      rating: 4.0,
-      distance: '2 min walk',
-      price: '$',
-      cuisine: 'Healthy',
-      image: null,
-      recommended: false,
-      hours: '6:00 AM - 10:00 PM',
-      location: 'Concourse A',
-      phone: '+1 (404) 555-0150',
-      website: 'www.freshens.com',
-    },
-    {
-      id: 29,
-      name: 'Caribou Coffee',
-      description: 'Premium coffee and tea with pastries and light fare',
-      rating: 4.2,
-      distance: '1 min walk',
-      price: '$',
-      cuisine: 'Coffee',
-      image: null,
-      recommended: false,
-      hours: '4:00 AM - 11:00 PM',
-      location: 'Concourse A',
-      phone: '+1 (404) 555-0151',
-      website: 'www.cariboucoffee.com',
-    },
-    {
-      id: 30,
-      name: 'Coffee Bean & Tea Leaf',
-      description: 'International coffee and tea with pastries',
-      rating: 4.1,
-      distance: '1 min walk',
-      price: '$',
-      cuisine: 'Coffee',
-      image: null,
-      recommended: false,
-      hours: '4:00 AM - 11:00 PM',
-      location: 'Concourse A',
-      phone: '+1 (404) 555-0152',
-      website: 'www.coffeebean.com',
-    },
-    {
-      id: 31,
-      name: 'McDonald\'s',
-      description: 'Classic American fast food with burgers and fries',
-      rating: 3.8,
-      distance: '1 min walk',
-      price: '$',
-      cuisine: 'Fast Food',
-      image: null,
-      recommended: false,
-      hours: '4:00 AM - 11:00 PM',
-      location: 'Concourse A',
-      phone: '+1 (404) 555-0153',
-      website: 'www.mcdonalds.com',
-    },
-    {
-      id: 32,
-      name: 'Brioche Dorée',
-      description: 'French bakery with pastries, sandwiches, and coffee',
-      rating: 4.0,
-      distance: '2 min walk',
-      price: '$',
-      cuisine: 'French',
-      image: null,
-      recommended: false,
-      hours: '5:00 AM - 10:00 PM',
-      location: 'Concourse A',
-      phone: '+1 (404) 555-0154',
-      website: 'www.briochedoree.com',
-    },
-    {
-      id: 33,
-      name: 'Piece of Cake',
-      description: 'Specialty cakes and desserts with coffee',
-      rating: 4.2,
-      distance: '2 min walk',
-      price: '$',
-      cuisine: 'Desserts',
-      image: null,
-      recommended: false,
-      hours: '6:00 AM - 10:00 PM',
-      location: 'Concourse A',
-      phone: '+1 (404) 555-0155',
-      website: 'www.pieceofcake.com',
-    },
-    {
-      id: 34,
-      name: 'Pinkberry',
-      description: 'Frozen yogurt with fresh toppings and flavors',
-      rating: 4.0,
-      distance: '2 min walk',
-      price: '$',
-      cuisine: 'Desserts',
-      image: null,
-      recommended: false,
-      hours: '6:00 AM - 10:00 PM',
-      location: 'Concourse A',
-      phone: '+1 (404) 555-0156',
-      website: 'www.pinkberry.com',
-    },
-    {
-      id: 35,
-      name: 'Goldberg\'s Bagels Deli',
-      description: 'Fresh bagels, deli sandwiches, and Jewish specialties',
-      rating: 4.1,
-      distance: '2 min walk',
-      price: '$',
-      cuisine: 'Deli',
-      image: null,
-      recommended: false,
-      hours: '5:00 AM - 10:00 PM',
-      location: 'Concourse A',
-      phone: '+1 (404) 555-0157',
-      website: 'www.goldbergsbagels.com',
-    },
-    {
-      id: 36,
-      name: 'Sambazon',
-      description: 'Acai bowls, smoothies, and healthy superfood options',
-      rating: 4.2,
-      distance: '2 min walk',
-      price: '$',
-      cuisine: 'Healthy',
-      image: null,
-      recommended: false,
-      hours: '6:00 AM - 10:00 PM',
-      location: 'Concourse A',
-      phone: '+1 (404) 555-0158',
-      website: 'www.sambazon.com',
-    },
-    {
-      id: 37,
-      name: 'Atlanta Hawks Bar and Grill',
-      description: 'Sports bar with game day favorites and drinks',
-      rating: 4.0,
-      distance: '3 min walk',
-      price: '$$',
-      cuisine: 'Sports Bar',
-      image: null,
-      recommended: false,
-      hours: '11:00 AM - 10:00 PM',
-      location: 'Concourse A',
-      phone: '+1 (404) 555-0159',
-      website: 'www.hawksbar.com',
-    },
-    {
-      id: 38,
-      name: 'Beercode Kitchen & Bar',
-      description: 'Craft beer bar with elevated pub food',
-      rating: 4.1,
-      distance: '3 min walk',
-      price: '$$',
-      cuisine: 'Gastropub',
-      image: null,
-      recommended: false,
-      hours: '11:00 AM - 10:00 PM',
-      location: 'Concourse A',
-      phone: '+1 (404) 555-0160',
-      website: 'www.beercode.com',
-    },
-    {
-      id: 39,
-      name: 'Asian Chao',
-      description: 'Asian street food with fresh ingredients and bold flavors',
-      rating: 4.0,
-      distance: '2 min walk',
-      price: '$',
-      cuisine: 'Asian',
-      image: null,
-      recommended: false,
-      hours: '6:00 AM - 10:00 PM',
-      location: 'Concourse A',
-      phone: '+1 (404) 555-0161',
-      website: 'www.asianchao.com',
+      active: true,
     },
     {
       id: 2,
@@ -379,6 +58,7 @@ export default function FoodScreen() {
       location: 'Concourse A',
       phone: '+1 (404) 555-0124',
       website: 'www.paschals.com',
+      active: true,
     },
     {
       id: 3,
@@ -394,6 +74,7 @@ export default function FoodScreen() {
       location: 'Concourse C',
       phone: '+1 (404) 555-0125',
       website: 'www.phillipsseafood.com',
+      active: true,
     },
     {
       id: 4,
@@ -409,6 +90,7 @@ export default function FoodScreen() {
       location: 'Concourse F',
       phone: '+1 (404) 555-0126',
       website: 'www.thevarsity.com',
+      active: true,
     },
     {
       id: 5,
@@ -424,6 +106,7 @@ export default function FoodScreen() {
       location: 'Concourse D',
       phone: '+1 (404) 555-0127',
       website: 'www.sweetauburnbbq.com',
+      active: true,
     },
     {
       id: 6,
@@ -439,6 +122,7 @@ export default function FoodScreen() {
       location: 'Multiple Locations',
       phone: '+1 (404) 555-0128',
       website: 'www.chick-fil-a.com',
+      active: true,
     },
     {
       id: 7,
@@ -454,6 +138,519 @@ export default function FoodScreen() {
       location: 'Concourse B',
       phone: '+1 (404) 555-0129',
       website: 'www.pfchangs.com',
+      active: true,
+    },
+    {
+      id: 8,
+      name: 'TGI Friday\'s',
+      description: 'Casual American dining with signature cocktails',
+      rating: 4.0,
+      distance: '5 min walk',
+      price: '$$',
+      cuisine: 'American',
+      image: null,
+      recommended: false,
+      hours: '7:00 AM - 10:00 PM',
+      location: 'Concourse C',
+      phone: '+1 (404) 555-0130',
+      website: 'www.tgifridays.com',
+      active: true,
+    },
+    {
+      id: 9,
+      name: 'Café Intermezzo',
+      description: 'European-style café with desserts and coffee',
+      rating: 4.3,
+      distance: '4 min walk',
+      price: '$$',
+      cuisine: 'Café',
+      image: null,
+      recommended: true,
+      hours: '5:00 AM - 11:00 PM',
+      location: 'Concourse B',
+      phone: '+1 (404) 555-0131',
+      website: 'www.cafeintermezzo.com',
+      active: true,
+    },
+    {
+      id: 10,
+      name: 'Starbucks',
+      description: 'Premium coffee, teas, and light breakfast options',
+      rating: 4.2,
+      distance: '1 min walk',
+      price: '$',
+      cuisine: 'Coffee',
+      image: null,
+      recommended: false,
+      hours: '4:30 AM - 11:30 PM',
+      location: 'Multiple Locations',
+      phone: '+1 (404) 555-0132',
+      website: 'www.starbucks.com',
+      active: true,
+    },
+    {
+      id: 11,
+      name: 'Qdoba Mexican Eats',
+      description: 'Fresh Mexican food with customizable bowls and burritos',
+      rating: 4.0,
+      distance: '3 min walk',
+      price: '$',
+      cuisine: 'Mexican',
+      image: null,
+      recommended: false,
+      hours: '6:00 AM - 10:00 PM',
+      location: 'Concourse A',
+      phone: '+1 (404) 555-0133',
+      website: 'www.qdoba.com',
+      active: true,
+    },
+    {
+      id: 12,
+      name: 'Burger King',
+      description: 'Flame-grilled burgers and fast food favorites',
+      rating: 3.8,
+      distance: '2 min walk',
+      price: '$',
+      cuisine: 'Fast Food',
+      image: null,
+      recommended: false,
+      hours: '5:00 AM - 11:00 PM',
+      location: 'Concourse T',
+      phone: '+1 (404) 555-0134',
+      website: 'www.burgerking.com',
+      active: true,
+    },
+    {
+      id: 13,
+      name: 'Popeyes Louisiana Kitchen',
+      description: 'Spicy Louisiana-style fried chicken and seafood',
+      rating: 4.1,
+      distance: '4 min walk',
+      price: '$',
+      cuisine: 'Fast Food',
+      image: null,
+      recommended: false,
+      hours: '6:00 AM - 10:30 PM',
+      location: 'Concourse D',
+      phone: '+1 (404) 555-0135',
+      website: 'www.popeyes.com',
+      active: true,
+    },
+    {
+      id: 14,
+      name: 'Atlanta ChopHouse',
+      description: 'Premium steakhouse with fine wines and cocktails',
+      rating: 4.7,
+      distance: '10 min walk',
+      price: '$$$$',
+      cuisine: 'Steakhouse',
+      image: null,
+      recommended: true,
+      hours: '11:00 AM - 9:00 PM',
+      location: 'Concourse C',
+      phone: '+1 (404) 555-0136',
+      website: 'www.atlantachophouse.com',
+      active: true,
+    },
+    {
+      id: 15,
+      name: 'Panda Express',
+      description: 'American Chinese fast food with fresh wok cooking',
+      rating: 4.0,
+      distance: '3 min walk',
+      price: '$',
+      cuisine: 'Asian',
+      image: null,
+      recommended: false,
+      hours: '6:00 AM - 10:00 PM',
+      location: 'Concourse F',
+      phone: '+1 (404) 555-0137',
+      website: 'www.pandaexpress.com',
+      active: true,
+    },
+    {
+      id: 16,
+      name: 'Arby\'s',
+      description: 'Roast beef sandwiches and curly fries',
+      rating: 3.9,
+      distance: '5 min walk',
+      price: '$',
+      cuisine: 'Fast Food',
+      image: null,
+      recommended: false,
+      hours: '6:00 AM - 10:00 PM',
+      location: 'Concourse E',
+      phone: '+1 (404) 555-0138',
+      website: 'www.arbys.com',
+      active: true,
+    },
+    {
+      id: 17,
+      name: 'Dunkin\'',
+      description: 'Coffee, donuts, and breakfast sandwiches',
+      rating: 4.1,
+      distance: '2 min walk',
+      price: '$',
+      cuisine: 'Coffee',
+      image: null,
+      recommended: false,
+      hours: '4:00 AM - 11:00 PM',
+      location: 'Multiple Locations',
+      phone: '+1 (404) 555-0139',
+      website: 'www.dunkindonuts.com',
+      active: true,
+    },
+    {
+      id: 18,
+      name: 'Ecco',
+      description: 'Mediterranean cuisine with fresh ingredients and wine',
+      rating: 4.5,
+      distance: '7 min walk',
+      price: '$$$',
+      cuisine: 'Mediterranean',
+      image: null,
+      recommended: true,
+      hours: '11:00 AM - 9:30 PM',
+      location: 'Concourse A',
+      phone: '+1 (404) 555-0140',
+      website: 'www.ecco.com',
+      active: true,
+    },
+    {
+      id: 19,
+      name: 'Cat Cora\'s Kitchen',
+      description: 'Celebrity chef restaurant featuring Mediterranean-inspired cuisine',
+      rating: 4.3,
+      distance: '2 min walk',
+      price: '$$$',
+      cuisine: 'Mediterranean',
+      image: null,
+      recommended: true,
+      hours: '11:00 AM - 9:00 PM',
+      location: 'Concourse A',
+      phone: '+1 (404) 555-0141',
+      website: 'www.catcoraskitchen.com',
+      active: true,
+    },
+    {
+      id: 20,
+      name: 'Gordon Biersch Brewery Restaurant',
+      description: 'Brewery restaurant with craft beers and American cuisine',
+      rating: 4.1,
+      distance: '3 min walk',
+      price: '$$',
+      cuisine: 'American',
+      image: null,
+      recommended: false,
+      hours: '11:00 AM - 10:00 PM',
+      location: 'Concourse A',
+      phone: '+1 (404) 555-0142',
+      website: 'www.gordonbiersch.com',
+      active: true,
+    },
+    {
+      id: 21,
+      name: 'Low Country New Southern Cuisine',
+      description: 'Authentic Low Country Southern cooking with fresh ingredients',
+      rating: 4.4,
+      distance: '4 min walk',
+      price: '$$',
+      cuisine: 'Southern',
+      image: null,
+      recommended: true,
+      hours: '10:00 AM - 9:00 PM',
+      location: 'Concourse A',
+      phone: '+1 (404) 555-0143',
+      website: 'www.lowcountrycuisine.com',
+      active: true,
+    },
+    {
+      id: 22,
+      name: 'Boardwalk Fresh Burgers & Fries',
+      description: 'Fresh, made-to-order burgers with hand-cut fries',
+      rating: 4.0,
+      distance: '2 min walk',
+      price: '$',
+      cuisine: 'American',
+      image: null,
+      recommended: false,
+      hours: '6:00 AM - 10:00 PM',
+      location: 'Concourse A',
+      phone: '+1 (404) 555-0144',
+      website: 'www.boardwalkfresh.com',
+      active: true,
+    },
+    {
+      id: 23,
+      name: 'Varasano\'s Pizzeria',
+      description: 'Artisanal Neapolitan-style pizza with fresh ingredients',
+      rating: 4.2,
+      distance: '3 min walk',
+      price: '$$',
+      cuisine: 'Italian',
+      image: null,
+      recommended: false,
+      hours: '11:00 AM - 10:00 PM',
+      location: 'Concourse A',
+      phone: '+1 (404) 555-0145',
+      website: 'www.varasanos.com',
+      active: true,
+    },
+    {
+      id: 24,
+      name: 'Shake Shack',
+      description: 'Premium fast food with burgers, hot dogs, and frozen custard',
+      rating: 4.3,
+      distance: '2 min walk',
+      price: '$',
+      cuisine: 'Fast Food',
+      image: null,
+      recommended: false,
+      hours: '6:00 AM - 11:00 PM',
+      location: 'Concourse A',
+      phone: '+1 (404) 555-0146',
+      website: 'www.shakeshack.com',
+      active: true,
+    },
+    {
+      id: 25,
+      name: 'Boar\'s Head Deli & Kiosks',
+      description: 'Premium deli sandwiches and snacks with quality meats',
+      rating: 4.0,
+      distance: '1 min walk',
+      price: '$',
+      cuisine: 'Deli',
+      image: null,
+      recommended: false,
+      hours: '5:00 AM - 11:00 PM',
+      location: 'Concourse A',
+      phone: '+1 (404) 555-0147',
+      website: 'www.boarshead.com',
+      active: true,
+    },
+    {
+      id: 26,
+      name: 'Great Wraps',
+      description: 'Fresh wraps and sandwiches made to order',
+      rating: 3.9,
+      distance: '2 min walk',
+      price: '$',
+      cuisine: 'Sandwiches',
+      image: null,
+      recommended: false,
+      hours: '6:00 AM - 10:00 PM',
+      location: 'Concourse A',
+      phone: '+1 (404) 555-0148',
+      website: 'www.greatwraps.com',
+      active: true,
+    },
+    {
+      id: 27,
+      name: 'Atlanta Bread & Bar',
+      description: 'Fresh-baked breads, sandwiches, and coffee',
+      rating: 4.1,
+      distance: '2 min walk',
+      price: '$',
+      cuisine: 'Bakery',
+      image: null,
+      recommended: false,
+      hours: '5:00 AM - 10:00 PM',
+      location: 'Concourse A',
+      phone: '+1 (404) 555-0149',
+      website: 'www.atlantabread.com',
+      active: true,
+    },
+    {
+      id: 28,
+      name: 'Freshëns',
+      description: 'Fresh, healthy food options with smoothies and wraps',
+      rating: 4.0,
+      distance: '2 min walk',
+      price: '$',
+      cuisine: 'Healthy',
+      image: null,
+      recommended: false,
+      hours: '6:00 AM - 10:00 PM',
+      location: 'Concourse A',
+      phone: '+1 (404) 555-0150',
+      website: 'www.freshens.com',
+      active: true,
+    },
+    {
+      id: 29,
+      name: 'Caribou Coffee',
+      description: 'Premium coffee and tea with pastries and light fare',
+      rating: 4.2,
+      distance: '1 min walk',
+      price: '$',
+      cuisine: 'Coffee',
+      image: null,
+      recommended: false,
+      hours: '4:00 AM - 11:00 PM',
+      location: 'Concourse A',
+      phone: '+1 (404) 555-0151',
+      website: 'www.cariboucoffee.com',
+      active: true,
+    },
+    {
+      id: 30,
+      name: 'Coffee Bean & Tea Leaf',
+      description: 'International coffee and tea with pastries',
+      rating: 4.1,
+      distance: '1 min walk',
+      price: '$',
+      cuisine: 'Coffee',
+      image: null,
+      recommended: false,
+      hours: '4:00 AM - 11:00 PM',
+      location: 'Concourse A',
+      phone: '+1 (404) 555-0152',
+      website: 'www.coffeebean.com',
+      active: true,
+    },
+    {
+      id: 31,
+      name: 'McDonald\'s',
+      description: 'Classic American fast food with burgers and fries',
+      rating: 3.8,
+      distance: '1 min walk',
+      price: '$',
+      cuisine: 'Fast Food',
+      image: null,
+      recommended: false,
+      hours: '4:00 AM - 11:00 PM',
+      location: 'Concourse A',
+      phone: '+1 (404) 555-0153',
+      website: 'www.mcdonalds.com',
+      active: true,
+    },
+    {
+      id: 32,
+      name: 'Brioche Dorée',
+      description: 'French bakery with pastries, sandwiches, and coffee',
+      rating: 4.0,
+      distance: '2 min walk',
+      price: '$',
+      cuisine: 'French',
+      image: null,
+      recommended: false,
+      hours: '5:00 AM - 10:00 PM',
+      location: 'Concourse A',
+      phone: '+1 (404) 555-0154',
+      website: 'www.briochedoree.com',
+      active: true,
+    },
+    {
+      id: 33,
+      name: 'Piece of Cake',
+      description: 'Specialty cakes and desserts with coffee',
+      rating: 4.2,
+      distance: '2 min walk',
+      price: '$',
+      cuisine: 'Desserts',
+      image: null,
+      recommended: false,
+      hours: '6:00 AM - 10:00 PM',
+      location: 'Concourse A',
+      phone: '+1 (404) 555-0155',
+      website: 'www.pieceofcake.com',
+      active: true,
+    },
+    {
+      id: 34,
+      name: 'Pinkberry',
+      description: 'Frozen yogurt with fresh toppings and flavors',
+      rating: 4.0,
+      distance: '2 min walk',
+      price: '$',
+      cuisine: 'Desserts',
+      image: null,
+      recommended: false,
+      hours: '6:00 AM - 10:00 PM',
+      location: 'Concourse A',
+      phone: '+1 (404) 555-0156',
+      website: 'www.pinkberry.com',
+      active: true,
+    },
+    {
+      id: 35,
+      name: 'Goldberg\'s Bagels Deli',
+      description: 'Fresh bagels, deli sandwiches, and Jewish specialties',
+      rating: 4.1,
+      distance: '2 min walk',
+      price: '$',
+      cuisine: 'Deli',
+      image: null,
+      recommended: false,
+      hours: '5:00 AM - 10:00 PM',
+      location: 'Concourse A',
+      phone: '+1 (404) 555-0157',
+      website: 'www.goldbergsbagels.com',
+      active: true,
+    },
+    {
+      id: 36,
+      name: 'Sambazon',
+      description: 'Acai bowls, smoothies, and healthy superfood options',
+      rating: 4.2,
+      distance: '2 min walk',
+      price: '$',
+      cuisine: 'Healthy',
+      image: null,
+      recommended: false,
+      hours: '6:00 AM - 10:00 PM',
+      location: 'Concourse A',
+      phone: '+1 (404) 555-0158',
+      website: 'www.sambazon.com',
+      active: true,
+    },
+    {
+      id: 37,
+      name: 'Atlanta Hawks Bar and Grill',
+      description: 'Sports bar with game day favorites and drinks',
+      rating: 4.0,
+      distance: '3 min walk',
+      price: '$$',
+      cuisine: 'Sports Bar',
+      image: null,
+      recommended: false,
+      hours: '11:00 AM - 10:00 PM',
+      location: 'Concourse A',
+      phone: '+1 (404) 555-0159',
+      website: 'www.hawksbar.com',
+      active: true,
+    },
+    {
+      id: 38,
+      name: 'Beercode Kitchen & Bar',
+      description: 'Craft beer bar with elevated pub food',
+      rating: 4.1,
+      distance: '3 min walk',
+      price: '$$',
+      cuisine: 'Gastropub',
+      image: null,
+      recommended: false,
+      hours: '11:00 AM - 10:00 PM',
+      location: 'Concourse A',
+      phone: '+1 (404) 555-0160',
+      website: 'www.beercode.com',
+      active: true,
+    },
+    {
+      id: 39,
+      name: 'Asian Chao',
+      description: 'Asian street food with fresh ingredients and bold flavors',
+      rating: 4.0,
+      distance: '2 min walk',
+      price: '$',
+      cuisine: 'Asian',
+      image: null,
+      recommended: false,
+      hours: '6:00 AM - 10:00 PM',
+      location: 'Concourse A',
+      phone: '+1 (404) 555-0161',
+      website: 'www.asianchao.com',
+      active: true,
     },
     {
       id: 40,
@@ -469,6 +666,7 @@ export default function FoodScreen() {
       location: 'Concourse B',
       phone: '+1 (404) 555-0162',
       website: 'www.sweetwaterbrew.com',
+      active: true,
     },
     {
       id: 41,
@@ -484,6 +682,7 @@ export default function FoodScreen() {
       location: 'Concourse B',
       phone: '+1 (404) 555-0163',
       website: 'www.bobbysburgerpalace.com',
+      active: true,
     },
     {
       id: 42,
@@ -499,6 +698,7 @@ export default function FoodScreen() {
       location: 'Concourse B',
       phone: '+1 (404) 555-0164',
       website: 'www.bluemoonbrewhouse.com',
+      active: true,
     },
     {
       id: 43,
@@ -514,6 +714,7 @@ export default function FoodScreen() {
       location: 'Concourse B',
       phone: '+1 (404) 555-0165',
       website: 'www.auntieannes.com',
+      active: true,
     },
     {
       id: 44,
@@ -529,6 +730,7 @@ export default function FoodScreen() {
       location: 'Concourse B',
       phone: '+1 (404) 555-0166',
       website: 'www.atlantabread.com',
+      active: true,
     },
     {
       id: 45,
@@ -544,6 +746,7 @@ export default function FoodScreen() {
       location: 'Concourse B',
       phone: '+1 (404) 555-0167',
       website: 'www.banghousepizza.com',
+      active: true,
     },
     {
       id: 46,
@@ -559,6 +762,7 @@ export default function FoodScreen() {
       location: 'Concourse B',
       phone: '+1 (404) 555-0168',
       website: 'www.fresh2order.com',
+      active: true,
     },
     {
       id: 47,
@@ -574,6 +778,7 @@ export default function FoodScreen() {
       location: 'Concourse B',
       phone: '+1 (404) 555-0169',
       website: 'www.popeyes.com',
+      active: true,
     },
     {
       id: 48,
@@ -589,6 +794,7 @@ export default function FoodScreen() {
       location: 'Concourse B',
       phone: '+1 (404) 555-0170',
       website: 'www.tgifridays.com',
+      active: true,
     },
     {
       id: 49,
@@ -604,6 +810,7 @@ export default function FoodScreen() {
       location: 'Concourse B',
       phone: '+1 (404) 555-0171',
       website: 'www.wendys.com',
+      active: true,
     },
     {
       id: 50,
@@ -619,6 +826,7 @@ export default function FoodScreen() {
       location: 'Concourse B',
       phone: '+1 (404) 555-0172',
       website: 'www.willysmexicangrill.com',
+      active: true,
     },
     {
       id: 51,
@@ -634,6 +842,7 @@ export default function FoodScreen() {
       location: 'Concourse B',
       phone: '+1 (404) 555-0173',
       website: 'www.coffeebeanery.com',
+      active: true,
     },
     {
       id: 52,
@@ -649,6 +858,7 @@ export default function FoodScreen() {
       location: 'Concourse B',
       phone: '+1 (404) 555-0174',
       website: 'www.roastcoffeehouse.com',
+      active: true,
     },
     {
       id: 53,
@@ -664,6 +874,7 @@ export default function FoodScreen() {
       location: 'Concourse B',
       phone: '+1 (404) 555-0175',
       website: 'www.samueladams.com',
+      active: true,
     },
     {
       id: 54,
@@ -679,6 +890,7 @@ export default function FoodScreen() {
       location: 'Concourse B',
       phone: '+1 (404) 555-0176',
       website: 'www.proofofthepudding.com',
+      active: true,
     },
     {
       id: 55,
@@ -694,6 +906,7 @@ export default function FoodScreen() {
       location: 'Concourse B',
       phone: '+1 (404) 555-0177',
       website: 'www.savannahscandy.com',
+      active: true,
     },
     {
       id: 56,
@@ -709,21 +922,7 @@ export default function FoodScreen() {
       location: 'Concourse B',
       phone: '+1 (404) 555-0178',
       website: 'www.saviprovisions.com',
-    },
-    {
-      id: 8,
-      name: 'TGI Friday\'s',
-      description: 'Casual American dining with signature cocktails',
-      rating: 4.0,
-      distance: '5 min walk',
-      price: '$$',
-      cuisine: 'American',
-      image: null, // Will use fallback icon
-      recommended: false,
-      hours: '7:00 AM - 10:00 PM',
-      location: 'Concourse C',
-      phone: '+1 (404) 555-0130',
-      website: 'www.tgifridays.com',
+      active: true,
     },
     {
       id: 57,
@@ -739,6 +938,7 @@ export default function FoodScreen() {
       location: 'Concourse C',
       phone: '+1 (404) 555-0179',
       website: 'www.bantamandbiddy.com',
+      active: true,
     },
     {
       id: 58,
@@ -754,6 +954,7 @@ export default function FoodScreen() {
       location: 'Concourse C',
       phone: '+1 (404) 555-0180',
       website: 'www.eltaco.com',
+      active: true,
     },
     {
       id: 59,
@@ -769,6 +970,7 @@ export default function FoodScreen() {
       location: 'Concourse C',
       phone: '+1 (404) 555-0181',
       website: 'www.krispykreme.com',
+      active: true,
     },
     {
       id: 60,
@@ -784,6 +986,7 @@ export default function FoodScreen() {
       location: 'Concourse C',
       phone: '+1 (404) 555-0182',
       website: 'www.atlantabread.com',
+      active: true,
     },
     {
       id: 61,
@@ -799,6 +1002,7 @@ export default function FoodScreen() {
       location: 'Concourse C',
       phone: '+1 (404) 555-0183',
       website: 'www.auntieannes.com',
+      active: true,
     },
     {
       id: 62,
@@ -814,6 +1018,7 @@ export default function FoodScreen() {
       location: 'Concourse C',
       phone: '+1 (404) 555-0184',
       website: 'www.carrabbas.com',
+      active: true,
     },
     {
       id: 63,
@@ -829,6 +1034,7 @@ export default function FoodScreen() {
       location: 'Concourse C',
       phone: '+1 (404) 555-0185',
       website: 'www.fiveguys.com',
+      active: true,
     },
     {
       id: 64,
@@ -844,6 +1050,7 @@ export default function FoodScreen() {
       location: 'Concourse C',
       phone: '+1 (404) 555-0186',
       website: 'www.lamadeleine.com',
+      active: true,
     },
     {
       id: 65,
@@ -859,6 +1066,7 @@ export default function FoodScreen() {
       location: 'Concourse C',
       phone: '+1 (404) 555-0187',
       website: 'www.longhornsteakhouse.com',
+      active: true,
     },
     {
       id: 66,
@@ -874,6 +1082,7 @@ export default function FoodScreen() {
       location: 'Concourse C',
       phone: '+1 (404) 555-0188',
       website: 'www.famousfamiglia.com',
+      active: true,
     },
     {
       id: 67,
@@ -889,6 +1098,7 @@ export default function FoodScreen() {
       location: 'Concourse C',
       phone: '+1 (404) 555-0189',
       website: 'www.charleys.com',
+      active: true,
     },
     {
       id: 68,
@@ -904,6 +1114,7 @@ export default function FoodScreen() {
       location: 'Concourse C',
       phone: '+1 (404) 555-0190',
       website: 'www.freshhealthy.com',
+      active: true,
     },
     {
       id: 69,
@@ -919,6 +1130,7 @@ export default function FoodScreen() {
       location: 'Concourse C',
       phone: '+1 (404) 555-0191',
       website: 'www.jerseymikes.com',
+      active: true,
     },
     {
       id: 70,
@@ -934,6 +1146,7 @@ export default function FoodScreen() {
       location: 'Concourse C',
       phone: '+1 (404) 555-0192',
       website: 'www.leeannchin.com',
+      active: true,
     },
     {
       id: 71,
@@ -949,6 +1162,7 @@ export default function FoodScreen() {
       location: 'Concourse C',
       phone: '+1 (404) 555-0193',
       website: 'www.linksgrill.com',
+      active: true,
     },
     {
       id: 72,
@@ -964,6 +1178,7 @@ export default function FoodScreen() {
       location: 'Concourse C',
       phone: '+1 (404) 555-0194',
       website: 'www.sbarro.com',
+      active: true,
     },
     {
       id: 73,
@@ -979,6 +1194,7 @@ export default function FoodScreen() {
       location: 'Concourse C',
       phone: '+1 (404) 555-0195',
       website: 'www.saladworks.com',
+      active: true,
     },
     {
       id: 74,
@@ -994,6 +1210,7 @@ export default function FoodScreen() {
       location: 'Concourse C',
       phone: '+1 (404) 555-0196',
       website: 'www.sweetgeorgiajukejoint.com',
+      active: true,
     },
     {
       id: 75,
@@ -1009,6 +1226,7 @@ export default function FoodScreen() {
       location: 'Concourse C',
       phone: '+1 (404) 555-0197',
       website: 'www.starbucks.com',
+      active: true,
     },
     {
       id: 76,
@@ -1024,156 +1242,7 @@ export default function FoodScreen() {
       location: 'Concourse C',
       phone: '+1 (404) 555-0198',
       website: 'www.savannahscandy.com',
-    },
-    {
-      id: 9,
-      name: 'Café Intermezzo',
-      description: 'European-style café with desserts and coffee',
-      rating: 4.3,
-      distance: '4 min walk',
-      price: '$$',
-      cuisine: 'Café',
-      image: null, // Will use fallback icon
-      recommended: true,
-      hours: '5:00 AM - 11:00 PM',
-      location: 'Concourse B',
-      phone: '+1 (404) 555-0131',
-      website: 'www.cafeintermezzo.com',
-    },
-    {
-      id: 10,
-      name: 'Starbucks',
-      description: 'Premium coffee, teas, and light breakfast options',
-      rating: 4.2,
-      distance: '1 min walk',
-      price: '$',
-      cuisine: 'Coffee',
-      image: null, // Will use fallback icon
-      recommended: false,
-      hours: '4:30 AM - 11:30 PM',
-      location: 'Multiple Locations',
-      phone: '+1 (404) 555-0132',
-      website: 'www.starbucks.com',
-    },
-    {
-      id: 11,
-      name: 'Qdoba Mexican Eats',
-      description: 'Fresh Mexican food with customizable bowls and burritos',
-      rating: 4.0,
-      distance: '3 min walk',
-      price: '$',
-      cuisine: 'Mexican',
-      image: null, // Will use fallback icon
-      recommended: false,
-      hours: '6:00 AM - 10:00 PM',
-      location: 'Concourse A',
-      phone: '+1 (404) 555-0133',
-      website: 'www.qdoba.com',
-    },
-    {
-      id: 12,
-      name: 'Burger King',
-      description: 'Flame-grilled burgers and fast food favorites',
-      rating: 3.8,
-      distance: '2 min walk',
-      price: '$',
-      cuisine: 'Fast Food',
-      image: null, // Will use fallback icon
-      recommended: false,
-      hours: '5:00 AM - 11:00 PM',
-      location: 'Concourse T',
-      phone: '+1 (404) 555-0134',
-      website: 'www.burgerking.com',
-    },
-    {
-      id: 13,
-      name: 'Popeyes Louisiana Kitchen',
-      description: 'Spicy Louisiana-style fried chicken and seafood',
-      rating: 4.1,
-      distance: '4 min walk',
-      price: '$',
-      cuisine: 'Fast Food',
-      image: null, // Will use fallback icon
-      recommended: false,
-      hours: '6:00 AM - 10:30 PM',
-      location: 'Concourse D',
-      phone: '+1 (404) 555-0135',
-      website: 'www.popeyes.com',
-    },
-    {
-      id: 14,
-      name: 'Atlanta ChopHouse',
-      description: 'Premium steakhouse with fine wines and cocktails',
-      rating: 4.7,
-      distance: '10 min walk',
-      price: '$$$$',
-      cuisine: 'Steakhouse',
-      image: null, // Will use fallback icon
-      recommended: true,
-      hours: '11:00 AM - 9:00 PM',
-      location: 'Concourse C',
-      phone: '+1 (404) 555-0136',
-      website: 'www.atlantachophouse.com',
-    },
-    {
-      id: 15,
-      name: 'Panda Express',
-      description: 'American Chinese fast food with fresh wok cooking',
-      rating: 4.0,
-      distance: '3 min walk',
-      price: '$',
-      cuisine: 'Asian',
-      image: null, // Will use fallback icon
-      recommended: false,
-      hours: '6:00 AM - 10:00 PM',
-      location: 'Concourse F',
-      phone: '+1 (404) 555-0137',
-      website: 'www.pandaexpress.com',
-    },
-    {
-      id: 16,
-      name: 'Arby\'s',
-      description: 'Roast beef sandwiches and curly fries',
-      rating: 3.9,
-      distance: '5 min walk',
-      price: '$',
-      cuisine: 'Fast Food',
-      image: null, // Will use fallback icon
-      recommended: false,
-      hours: '6:00 AM - 10:00 PM',
-      location: 'Concourse E',
-      phone: '+1 (404) 555-0138',
-      website: 'www.arbys.com',
-    },
-    {
-      id: 17,
-      name: 'Dunkin\'',
-      description: 'Coffee, donuts, and breakfast sandwiches',
-      rating: 4.1,
-      distance: '2 min walk',
-      price: '$',
-      cuisine: 'Coffee',
-      image: null, // Will use fallback icon
-      recommended: false,
-      hours: '4:00 AM - 11:00 PM',
-      location: 'Multiple Locations',
-      phone: '+1 (404) 555-0139',
-      website: 'www.dunkindonuts.com',
-    },
-    {
-      id: 18,
-      name: 'Ecco',
-      description: 'Mediterranean cuisine with fresh ingredients and wine',
-      rating: 4.5,
-      distance: '7 min walk',
-      price: '$$$',
-      cuisine: 'Mediterranean',
-      image: null, // Will use fallback icon
-      recommended: true,
-      hours: '11:00 AM - 9:30 PM',
-      location: 'Concourse A',
-      phone: '+1 (404) 555-0140',
-      website: 'www.ecco.com',
+      active: true,
     },
     {
       id: 77,
@@ -1189,6 +1258,7 @@ export default function FoodScreen() {
       location: 'Concourse D',
       phone: '+1 (404) 555-0199',
       website: 'www.chickenplusbeer.com',
+      active: true,
     },
     {
       id: 78,
@@ -1204,6 +1274,7 @@ export default function FoodScreen() {
       location: 'Concourse D',
       phone: '+1 (404) 555-0200',
       website: 'www.grindhouseburgers.com',
+      active: true,
     },
     {
       id: 79,
@@ -1219,6 +1290,7 @@ export default function FoodScreen() {
       location: 'Concourse D',
       phone: '+1 (404) 555-0201',
       website: 'www.mustardseedbbq.com',
+      active: true,
     },
     {
       id: 80,
@@ -1234,6 +1306,7 @@ export default function FoodScreen() {
       location: 'Concourse D',
       phone: '+1 (404) 555-0202',
       website: 'www.harvestandgrounds.com',
+      active: true,
     },
     {
       id: 81,
@@ -1249,6 +1322,7 @@ export default function FoodScreen() {
       location: 'Concourse D',
       phone: '+1 (404) 555-0203',
       website: 'www.garbanzo.com',
+      active: true,
     },
     {
       id: 82,
@@ -1264,6 +1338,7 @@ export default function FoodScreen() {
       location: 'Concourse D',
       phone: '+1 (404) 555-0204',
       website: 'www.buffalowildwings.com',
+      active: true,
     },
     {
       id: 83,
@@ -1279,6 +1354,7 @@ export default function FoodScreen() {
       location: 'Concourse D',
       phone: '+1 (404) 555-0205',
       website: 'www.chipotle.com',
+      active: true,
     },
     {
       id: 84,
@@ -1294,6 +1370,7 @@ export default function FoodScreen() {
       location: 'Concourse D',
       phone: '+1 (404) 555-0206',
       website: 'www.einsteinbros.com',
+      active: true,
     },
     {
       id: 85,
@@ -1309,6 +1386,7 @@ export default function FoodScreen() {
       location: 'Concourse D',
       phone: '+1 (404) 555-0207',
       website: 'www.foodandwine.com',
+      active: true,
     },
     {
       id: 86,
@@ -1324,6 +1402,7 @@ export default function FoodScreen() {
       location: 'Concourse D',
       phone: '+1 (404) 555-0208',
       website: 'www.4040club.com',
+      active: true,
     },
     {
       id: 87,
@@ -1339,6 +1418,7 @@ export default function FoodScreen() {
       location: 'Concourse D',
       phone: '+1 (404) 555-0209',
       website: 'www.terrapinbeer.com',
+      active: true,
     },
     {
       id: 88,
@@ -1354,6 +1434,7 @@ export default function FoodScreen() {
       location: 'Concourse D',
       phone: '+1 (404) 555-0210',
       website: 'www.auntieannes.com',
+      active: true,
     },
     {
       id: 89,
@@ -1369,6 +1450,7 @@ export default function FoodScreen() {
       location: 'Concourse D',
       phone: '+1 (404) 555-0211',
       website: 'www.asianchao.com',
+      active: true,
     },
     {
       id: 90,
@@ -1384,6 +1466,7 @@ export default function FoodScreen() {
       location: 'Concourse D',
       phone: '+1 (404) 555-0212',
       website: 'www.bravesgrill.com',
+      active: true,
     },
     {
       id: 91,
@@ -1399,6 +1482,7 @@ export default function FoodScreen() {
       location: 'Concourse D',
       phone: '+1 (404) 555-0213',
       website: 'www.koho.com',
+      active: true,
     },
     {
       id: 92,
@@ -1414,6 +1498,7 @@ export default function FoodScreen() {
       location: 'Concourse D',
       phone: '+1 (404) 555-0214',
       website: 'www.wolfgangpuck.com',
+      active: true,
     },
     {
       id: 93,
@@ -1429,6 +1514,7 @@ export default function FoodScreen() {
       location: 'Concourse F',
       phone: '+1 (404) 555-0215',
       website: 'www.ecco.com',
+      active: true,
     },
     {
       id: 94,
@@ -1444,6 +1530,7 @@ export default function FoodScreen() {
       location: 'Concourse F',
       phone: '+1 (404) 555-0216',
       website: 'www.pecanbistro.com',
+      active: true,
     },
     {
       id: 95,
@@ -1459,6 +1546,7 @@ export default function FoodScreen() {
       location: 'Concourse F',
       phone: '+1 (404) 555-0217',
       website: 'www.jekyllislandseafood.com',
+      active: true,
     },
     {
       id: 96,
@@ -1474,6 +1562,7 @@ export default function FoodScreen() {
       location: 'Concourse F',
       phone: '+1 (404) 555-0218',
       website: 'www.lorenagarcia.com',
+      active: true,
     },
     {
       id: 97,
@@ -1489,6 +1578,7 @@ export default function FoodScreen() {
       location: 'Concourse F',
       phone: '+1 (404) 555-0219',
       website: 'www.maisonmathis.com',
+      active: true,
     },
     {
       id: 98,
@@ -1504,6 +1594,7 @@ export default function FoodScreen() {
       location: 'Concourse F',
       phone: '+1 (404) 555-0220',
       website: 'www.peiwei.com',
+      active: true,
     },
     {
       id: 99,
@@ -1519,6 +1610,7 @@ export default function FoodScreen() {
       location: 'Concourse F',
       phone: '+1 (404) 555-0221',
       website: 'www.burgerking.com',
+      active: true,
     },
     {
       id: 100,
@@ -1534,6 +1626,7 @@ export default function FoodScreen() {
       location: 'Concourse F',
       phone: '+1 (404) 555-0222',
       website: 'www.atlantabread.com',
+      active: true,
     },
     {
       id: 101,
@@ -1549,6 +1642,7 @@ export default function FoodScreen() {
       location: 'Concourse F',
       phone: '+1 (404) 555-0223',
       website: 'www.starbucks.com',
+      active: true,
     },
     {
       id: 102,
@@ -1564,6 +1658,7 @@ export default function FoodScreen() {
       location: 'Concourse T',
       phone: '+1 (404) 555-0224',
       website: 'www.grindhouseburgers.com',
+      active: true,
     },
     {
       id: 103,
@@ -1579,6 +1674,7 @@ export default function FoodScreen() {
       location: 'Concourse T',
       phone: '+1 (404) 555-0225',
       website: 'www.atlantastillhouse.com',
+      active: true,
     },
     {
       id: 104,
@@ -1594,6 +1690,7 @@ export default function FoodScreen() {
       location: 'Concourse T',
       phone: '+1 (404) 555-0226',
       website: 'www.unclemaddios.com',
+      active: true,
     },
     {
       id: 105,
@@ -1609,6 +1706,7 @@ export default function FoodScreen() {
       location: 'Concourse T',
       phone: '+1 (404) 555-0227',
       website: 'www.goldbergsbagels.com',
+      active: true,
     },
     {
       id: 106,
@@ -1624,6 +1722,7 @@ export default function FoodScreen() {
       location: 'Concourse T',
       phone: '+1 (404) 555-0228',
       website: 'www.bojangles.com',
+      active: true,
     },
     {
       id: 107,
@@ -1639,6 +1738,7 @@ export default function FoodScreen() {
       location: 'Concourse T',
       phone: '+1 (404) 555-0229',
       website: 'www.cantinaloredo.com',
+      active: true,
     },
     {
       id: 108,
@@ -1654,6 +1754,7 @@ export default function FoodScreen() {
       location: 'Concourse T',
       phone: '+1 (404) 555-0230',
       website: 'www.dunkindonuts.com',
+      active: true,
     },
     {
       id: 109,
@@ -1669,6 +1770,7 @@ export default function FoodScreen() {
       location: 'Concourse T',
       phone: '+1 (404) 555-0231',
       website: 'www.harvestandgrounds.com',
+      active: true,
     },
     {
       id: 110,
@@ -1684,6 +1786,7 @@ export default function FoodScreen() {
       location: 'Concourse T',
       phone: '+1 (404) 555-0232',
       website: 'www.jambajuice.com',
+      active: true,
     },
     {
       id: 111,
@@ -1699,6 +1802,7 @@ export default function FoodScreen() {
       location: 'Concourse T',
       phone: '+1 (404) 555-0233',
       website: 'www.papiscaribbean.com',
+      active: true,
     },
     {
       id: 112,
@@ -1714,6 +1818,7 @@ export default function FoodScreen() {
       location: 'Concourse T',
       phone: '+1 (404) 555-0234',
       website: 'www.pizzaboxx.com',
+      active: true,
     },
     {
       id: 113,
@@ -1729,6 +1834,7 @@ export default function FoodScreen() {
       location: 'Concourse T',
       phone: '+1 (404) 555-0235',
       website: 'www.subway.com',
+      active: true,
     },
     {
       id: 114,
@@ -1744,6 +1850,7 @@ export default function FoodScreen() {
       location: 'Concourse T',
       phone: '+1 (404) 555-0236',
       website: 'www.tropicalsmoothie.com',
+      active: true,
     },
     {
       id: 115,
@@ -1759,6 +1866,7 @@ export default function FoodScreen() {
       location: 'Concourse T',
       phone: '+1 (404) 555-0237',
       website: 'www.vinovolo.com',
+      active: true,
     },
     {
       id: 116,
@@ -1774,6 +1882,7 @@ export default function FoodScreen() {
       location: 'Concourse E',
       phone: '+1 (404) 555-0238',
       website: 'www.bluemoonbrewhouse.com',
+      active: true,
     },
     {
       id: 117,
@@ -1789,6 +1898,7 @@ export default function FoodScreen() {
       location: 'Concourse E',
       phone: '+1 (404) 555-0239',
       website: 'www.boarshead.com',
+      active: true,
     },
     {
       id: 118,
@@ -1804,6 +1914,7 @@ export default function FoodScreen() {
       location: 'Concourse E',
       phone: '+1 (404) 555-0240',
       website: 'www.qdoba.com',
+      active: true,
     },
     {
       id: 119,
@@ -1819,6 +1930,7 @@ export default function FoodScreen() {
       location: 'Concourse E',
       phone: '+1 (404) 555-0241',
       website: 'www.pandaexpress.com',
+      active: true,
     },
     {
       id: 120,
@@ -1834,6 +1946,7 @@ export default function FoodScreen() {
       location: 'Concourse E',
       phone: '+1 (404) 555-0242',
       website: 'www.arbys.com',
+      active: true,
     },
     {
       id: 121,
@@ -1849,6 +1962,7 @@ export default function FoodScreen() {
       location: 'Concourse E',
       phone: '+1 (404) 555-0243',
       website: 'www.mcdonalds.com',
+      active: true,
     },
     {
       id: 122,
@@ -1864,6 +1978,7 @@ export default function FoodScreen() {
       location: 'Concourse E',
       phone: '+1 (404) 555-0244',
       website: 'www.villaitalian.com',
+      active: true,
     },
     {
       id: 123,
@@ -1879,6 +1994,7 @@ export default function FoodScreen() {
       location: 'Concourse E',
       phone: '+1 (404) 555-0245',
       website: 'www.nathansfamous.com',
+      active: true,
     },
     {
       id: 124,
@@ -1894,6 +2010,7 @@ export default function FoodScreen() {
       location: 'Concourse E',
       phone: '+1 (404) 555-0246',
       website: 'www.cariboucoffee.com',
+      active: true,
     },
     {
       id: 125,
@@ -1909,6 +2026,7 @@ export default function FoodScreen() {
       location: 'Concourse E',
       phone: '+1 (404) 555-0247',
       website: 'www.tgifridays.com',
+      active: true,
     },
     {
       id: 126,
@@ -1924,6 +2042,7 @@ export default function FoodScreen() {
       location: 'Concourse E',
       phone: '+1 (404) 555-0248',
       website: 'www.freshens.com',
+      active: true,
     },
     {
       id: 127,
@@ -1939,6 +2058,7 @@ export default function FoodScreen() {
       location: 'Concourse E',
       phone: '+1 (404) 555-0249',
       website: 'www.pianobar.com',
+      active: true,
     },
     {
       id: 128,
@@ -1954,6 +2074,7 @@ export default function FoodScreen() {
       location: 'Concourse E',
       phone: '+1 (404) 555-0250',
       website: 'www.naturestable.com',
+      active: true,
     },
     {
       id: 129,
@@ -1969,6 +2090,7 @@ export default function FoodScreen() {
       location: 'Concourse E',
       phone: '+1 (404) 555-0251',
       website: 'www.subway.com',
+      active: true,
     },
     {
       id: 130,
@@ -1984,56 +2106,65 @@ export default function FoodScreen() {
       location: 'Concourse E',
       phone: '+1 (404) 555-0252',
       website: 'www.cnbcsmartshop.com',
+      active: true,
     },
   ];
+  
+  // Filter to only show active restaurants, use fallback if context is empty
+  const activeRestaurants = restaurants.length > 0 
+    ? restaurants.filter(restaurant => restaurant.active)
+    : fallbackRestaurants.filter(restaurant => restaurant.active);
 
-  interface Restaurant {
-    id: number;
-    name: string;
-    description: string;
-    rating: number;
-    distance: string;
-    price: string;
-    cuisine: string;
-    image: any | null;
-    recommended: boolean;
-    hours: string;
-    location: string;
-    phone: string;
-    website: string;
-  }
+  const [filteredRestaurants, setFilteredRestaurants] = useState<LocalRestaurant[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [activeFilters, setActiveFilters] = useState({
+    concourse: '',
+    cuisine: '',
+    price: '',
+    rating: 0,
+  });
 
-  // Get unique values for filters
-  const concourses = [...new Set(restaurants.map(r => r.location))];
-  const cuisines = [...new Set(restaurants.map(r => r.cuisine))];
-  const prices = [...new Set(restaurants.map(r => r.price))];
 
-  // Filter restaurants based on search and filters
-  const filteredRestaurants = restaurants.filter(restaurant => {
+  useEffect(() => {
+    filterRestaurants();
+  }, [activeRestaurants, searchQuery, activeFilters]);
+
+  const filterRestaurants = () => {
+    let filtered = activeRestaurants;
+
     // Search filter
-    const matchesSearch = searchQuery === '' || 
-      restaurant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      restaurant.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      restaurant.cuisine.toLowerCase().includes(searchQuery.toLowerCase());
+    if (searchQuery) {
+      filtered = filtered.filter(restaurant =>
+        restaurant.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        restaurant.description.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        restaurant.cuisine.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
 
     // Concourse filter
-    const matchesConcourse = activeFilters.concourse === '' || 
-      restaurant.location === activeFilters.concourse;
+    if (activeFilters.concourse) {
+      filtered = filtered.filter(restaurant => restaurant.location === activeFilters.concourse);
+    }
 
     // Cuisine filter
-    const matchesCuisine = activeFilters.cuisine === '' || 
-      restaurant.cuisine === activeFilters.cuisine;
+    if (activeFilters.cuisine) {
+      filtered = filtered.filter(restaurant => restaurant.cuisine === activeFilters.cuisine);
+    }
 
     // Price filter
-    const matchesPrice = activeFilters.price === '' || 
-      restaurant.price === activeFilters.price;
+    if (activeFilters.price) {
+      filtered = filtered.filter(restaurant => restaurant.price === activeFilters.price);
+    }
 
     // Rating filter
-    const matchesRating = activeFilters.rating === 0 || 
-      restaurant.rating >= activeFilters.rating;
+    if (activeFilters.rating > 0) {
+      filtered = filtered.filter(restaurant => restaurant.rating >= activeFilters.rating);
+    }
 
-    return matchesSearch && matchesConcourse && matchesCuisine && matchesPrice && matchesRating;
-  });
+    setFilteredRestaurants(filtered);
+  };
 
   const clearFilters = () => {
     setActiveFilters({
@@ -2044,19 +2175,24 @@ export default function FoodScreen() {
     });
   };
 
+  // Filter options
+  const concourses = ['Concourse A', 'Concourse B', 'Concourse C', 'Concourse D', 'Concourse E', 'Concourse F', 'Concourse T', 'Multiple Locations'];
+  const cuisines = ['Southern', 'Seafood', 'American', 'BBQ', 'Fast Food', 'Asian', 'Café', 'Coffee', 'Mexican', 'Steakhouse', 'Mediterranean'];
+  const prices = ['$', '$$', '$$$', '$$$$'];
+
   const hasActiveFilters = activeFilters.concourse !== '' || 
     activeFilters.cuisine !== '' || 
     activeFilters.price !== '' || 
     activeFilters.rating > 0;
 
-  const handleRestaurantPress = (restaurant: Restaurant) => {
+  const handleRestaurantPress = (restaurant: LocalRestaurant) => {
     if (!user) {
       setShowAuthModal(true);
       return;
     }
     router.push({
       pathname: '/restaurant-detail',
-      params: { id: restaurant.id }
+      params: { id: restaurant.id.toString() }
     } as any);
   };
 
@@ -2778,5 +2914,15 @@ const styles = StyleSheet.create({
   filterButtonText: {
     fontSize: 16,
     fontWeight: '600',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingVertical: 40,
+  },
+  loadingText: {
+    fontSize: 16,
+    fontWeight: '500',
   },
 }); 

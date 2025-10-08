@@ -19,12 +19,17 @@ function TabBarIcon(props: {
 
 export default function TabLayout() {
   const colorScheme = useColorScheme();
-  const { user } = useAuth();
+  const { user, isAdmin, loading } = useAuth();
   const [showAuthModal, setShowAuthModal] = useState(false);
 
+  // Show loading state while auth is initializing
+  if (loading) {
+    return null; // or a loading spinner
+  }
+
   const handleTabPress = (e: any, route: string) => {
-    // Allow access to home tab regardless of auth status
-    if (route === 'index') {
+    // Allow access to home and admin tabs regardless of auth status
+    if (route === 'index' || route === 'admin') {
       return;
     }
     
@@ -95,7 +100,14 @@ export default function TabLayout() {
           title: 'Profile',
           tabBarIcon: ({ color }) => <TabBarIcon name="person" color={color} />,
         }}
-              />
+      />
+      <Tabs.Screen
+        name="admin"
+        options={{
+          title: 'Admin',
+          tabBarIcon: ({ color }) => <TabBarIcon name="settings" color={color} />,
+        }}
+      />
       </Tabs>
       
       <AuthModal 
